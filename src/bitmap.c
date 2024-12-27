@@ -5,7 +5,7 @@
 void write_bitmap(char *filename, unsigned int imgwidth, unsigned int imgheight,
                   uint8_t pixels[][3]) {
     FILE *fptr = fopen(filename, "wb");
-    size_t row_padding = 4 - (imgwidth * 3) % 4;
+    size_t row_padding = (4 - (imgwidth * 3) % 4) % 4;
 
     // file header
     uint32_t file_size =
@@ -19,12 +19,12 @@ void write_bitmap(char *filename, unsigned int imgwidth, unsigned int imgheight,
 
     // info header
     uint32_t size = htole32(40);
-    uint32_t width = htole32(2);
-    uint32_t height = htole32(2);
+    uint32_t width = htole32(imgwidth);
+    uint32_t height = htole32(imgheight);
     uint16_t planes = htole16(1);
     uint16_t bit_per_pixel = htole16(24);
     uint32_t compression = htole32(0);
-    uint32_t image_size = htole32(imgwidth * imgheight * 3);
+    uint32_t image_size = htole32((3 * imgwidth + row_padding) * imgheight);
     uint32_t x_per_meter = htole32(0);
     uint32_t y_per_meter = htole32(0);
     uint32_t colors_used = htole32(0);
@@ -42,11 +42,14 @@ void write_bitmap(char *filename, unsigned int imgwidth, unsigned int imgheight,
     fwrite(&important_colors, 4, 1, fptr);
 
     // pixel data
-    for (int y = 0; y < imgheight; y++) {
+    for (int y = imgheight - 1; y >= 0; y--) {
         for (int x = 0; x < imgwidth; x++) {
             int idx = y * imgwidth + x;
-            for (int c = 2; c >= 0; c--)
-                fputc(pixels[idx][c], fptr);
+
+            // Write in BGR format
+            fputc(pixels[idx][2], fptr);
+            fputc(pixels[idx][1], fptr);
+            fputc(pixels[idx][0], fptr);
         }
 
         // apply padding
