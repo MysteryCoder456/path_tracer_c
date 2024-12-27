@@ -6,5 +6,7 @@ add_executable(${PROJECT_NAME} src/main.c src/bitmap.c)
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_include_directories(${PROJECT_NAME} PRIVATE external)
 
+option(CGLM_SHARED OFF)
+option(CGLM_STATIC ON)
 target_link_libraries(${PROJECT_NAME} PRIVATE cglm_headers)
 add_subdirectory(external/cglm)
