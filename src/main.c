@@ -1,15 +1,11 @@
 #include "bitmap.h"
+#include "cglm/call.h"
+#include "cglm/struct.h"
 #include <stdint.h>
 #include <stdio.h>
 
 #define WIDTH 1280
 #define HEIGHT 720
-
-struct color {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
 
 int main() {
     // Initialize frame and fill it with black
@@ -26,7 +22,7 @@ int main() {
         int x = frame_x - WIDTH / 2;
         int y = frame_y - HEIGHT / 2;
 
-        struct color result = {0, 0, 0}; // TODO: trace_ray(...);
+        vec3s result = {255, 255, 255}; // TODO: trace_ray(...);
         frame[i][0] = result.r;
         frame[i][1] = result.g;
         frame[i][2] = result.b;
