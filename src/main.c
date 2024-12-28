@@ -60,11 +60,17 @@ vec3s trace_ray(vec3s origin, vec3s dir, const vec3s light_dir,
     result = glms_vec3_add(result, closest_material.ambient);
 
     // Diffuse
-    float dot = fmaxf(-glms_vec3_dot(closest_normal, light_dir), 0);
-    result =
-        glms_vec3_add(result, glms_vec3_scale(closest_material.diffuse, dot));
+    float diffuse_dot = fmaxf(-glms_vec3_dot(closest_normal, light_dir), 0);
+    result = glms_vec3_add(
+        result, glms_vec3_scale(closest_material.diffuse, diffuse_dot));
 
-    // TODO: Specular
+    // Specular
+    vec3s reflect = glms_vec3_normalize(glms_vec3_reflect(dir, closest_normal));
+    float specular_dot = fmaxf(-glms_vec3_dot(reflect, light_dir), 0);
+    result = glms_vec3_add(
+        result,
+        glms_vec3_scale(closest_material.specular,
+                        powf(specular_dot, closest_material.shininess)));
 
     return result;
 }
@@ -76,8 +82,9 @@ int main() {
         {.tag = SPHERE,
          .material = {.ambient = {0.1745, 0.01175, 0.01175},
                       .diffuse = {0.61424, 0.04136, 0.04136},
-                      .specular = {0.727811, 0.626959, 0.626959}},
-         .sphere = {{0, 0, 4}, 2}},
+                      .specular = {0.727811, 0.626959, 0.626959},
+                      .shininess = 128.0},
+         .sphere = {{0, 0, 3}, 1}},
     };
     size_t num_objects = 2;
 
@@ -107,7 +114,8 @@ int main() {
         vec3s result =
             trace_ray(ray_ori, ray_dir, light_dir, objects, num_objects);
 
-        // convert 0-1 range to 0-255 range
+        // Clamp components b/w 0 and 1 then convert to 0-255 range
+        result = glms_vec3_clamp(result, 0, 1);
         result = glms_vec3_scale(result, 255);
 
         frame[i][0] = result.r;

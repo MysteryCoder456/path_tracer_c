@@ -15,6 +15,7 @@ typedef struct {
     vec3s ambient;
     vec3s diffuse;
     vec3s specular;
+    float shininess;
 } shape_material;
 
 typedef struct {
