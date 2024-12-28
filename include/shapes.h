@@ -11,11 +11,15 @@ typedef struct {
     vec3s v2;
 } triangle;
 
-typedef enum { SPHERE, TRIANGLE } shape_tag;
+typedef struct {
+    vec3s ambient;
+    vec3s diffuse;
+    vec3s specular;
+} shape_material;
 
 typedef struct {
-    shape_tag tag;
-    vec3s color; // TODO: change to something like a material
+    enum { SPHERE, TRIANGLE } tag;
+    shape_material material;
     union {
         sphere sphere;
         triangle triangle;
