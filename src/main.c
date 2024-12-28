@@ -29,7 +29,7 @@ vec3s trace_ray(vec3s origin, vec3s dir, const vec3s light_dir,
             if (!glms_ray_sphere(origin, dir, sphere, &t1, &t2))
                 break;
 
-            float dist = t1 > 0 ? t1 : (t2 > 0 ? t2 : 0);
+            float dist = t1 > 0 ? t1 : t2;
             if (dist >= closest_dist)
                 break;
 
