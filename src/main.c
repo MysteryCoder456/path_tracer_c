@@ -4,87 +4,124 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-#define WIDTH 720
-#define HEIGHT 720
-#define FOV (M_PI / 180.0f * 70.0f)
+#define WIDTH 1280
+#define HEIGHT 800
+#define FOV M_PI / 180.f * 90.0f
+#define MAX_BOUNCES 2
 
-vec3s trace_ray(vec3s origin, vec3s dir, const vec3s light_dir,
-                shape const *objects, const size_t num_objects) {
-    float closest_dist = INFINITY;
-    vec3s closest_point;
-    vec3s closest_normal;
-    shape_material closest_material;
-
-    // Find closest intersection
-    for (int i = 0; i < num_objects; i++) {
-        shape obj = objects[i];
-
-        switch (obj.tag) {
-        case SPHERE: {
-            // Check whether ray intersects sphere
-            vec4s sphere = {obj.sphere.center.x, obj.sphere.center.y,
-                            obj.sphere.center.z, obj.sphere.radius};
-            float t1, t2;
-            if (!glms_ray_sphere(origin, dir, sphere, &t1, &t2))
-                break;
-
-            float dist = t1 > 0 ? t1 : t2;
-            if (dist >= closest_dist)
-                break;
-
-            vec3s intersect = glms_vec3_add(glms_vec3_scale(dir, dist), origin);
-            vec3s normal = glms_vec3_normalize(
-                glms_vec3_sub(intersect, obj.sphere.center));
-
-            closest_dist = dist;
-            closest_point = intersect;
-            closest_normal = normal;
-            closest_material = obj.material;
-            break;
-        }
-        case TRIANGLE: {
-            // TODO: Implement triangles
-            break;
-        }
-        }
-    }
-
-    if (closest_dist == INFINITY)
-        // TODO: sky color
-        return glms_vec3_zero();
-
+vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
+                const vec3s light_dir, shape const *objects,
+                const size_t num_objects) {
+    size_t bounces;
     vec3s result = glms_vec3_zero();
 
-    // Ambient
-    result = glms_vec3_add(result, closest_material.ambient);
+    vec3s origin = initial_origin;
+    vec3s dir = initial_direction;
 
-    // Diffuse
-    float diffuse_dot = fmaxf(-glms_vec3_dot(closest_normal, light_dir), 0);
-    result = glms_vec3_add(
-        result, glms_vec3_scale(closest_material.diffuse, diffuse_dot));
+    for (bounces = 1; bounces <= MAX_BOUNCES; bounces++) {
+        float closest_dist = INFINITY;
+        vec3s closest_point;
+        vec3s closest_normal;
+        shape_material closest_material;
 
-    // Specular
-    vec3s reflect = glms_vec3_normalize(glms_vec3_reflect(dir, closest_normal));
-    float specular_dot = fmaxf(-glms_vec3_dot(reflect, light_dir), 0);
-    result = glms_vec3_add(
-        result,
-        glms_vec3_scale(closest_material.specular,
-                        powf(specular_dot, closest_material.shininess)));
+        // Find closest intersection
+        for (int i = 0; i < num_objects; i++) {
+            shape obj = objects[i];
 
+            switch (obj.tag) {
+            case SPHERE: {
+                // Check whether ray intersects sphere
+                vec4s sphere = {obj.sphere.center.x, obj.sphere.center.y,
+                                obj.sphere.center.z, obj.sphere.radius};
+                float t1, t2;
+                if (!glms_ray_sphere(origin, dir, sphere, &t1, &t2))
+                    break;
+
+                float dist = t1 > 0 ? t1 : t2;
+                if (dist >= closest_dist)
+                    break;
+
+                vec3s intersect =
+                    glms_vec3_add(glms_vec3_scale(dir, dist), origin);
+                vec3s normal = glms_vec3_normalize(
+                    glms_vec3_sub(intersect, obj.sphere.center));
+
+                closest_dist = dist;
+                closest_point = intersect;
+                closest_normal = normal;
+                closest_material = obj.material;
+                break;
+            }
+            case TRIANGLE: {
+                // TODO: Implement triangles
+                break;
+            }
+            }
+        }
+
+        if (closest_dist == INFINITY) {
+            // TODO: sky color
+
+            // sky blue
+            /*vec3s sky_color = {0.5, 0.7, 1.0};*/
+            vec3s sky_color = {0, 0, 0};
+
+            result = glms_vec3_add(result, sky_color);
+            break;
+        }
+
+        // Diffuse
+        float diffuse_dot = fmaxf(-glms_vec3_dot(closest_normal, light_dir), 0);
+        result = glms_vec3_add(
+            result, glms_vec3_scale(closest_material.albedo, diffuse_dot));
+
+        // Ray bounce
+        vec3s random_vector = {(float)rand() / RAND_MAX,
+                               (float)rand() / RAND_MAX,
+                               (float)rand() / RAND_MAX};
+        vec3s deviation = glms_vec3_normalize(
+            glms_vec3_sub(glms_vec3_scale(random_vector, 2), glms_vec3_one()));
+        vec3s deviated_normal =
+            glms_vec3_normalize(glms_vec3_add(closest_normal, deviation));
+        vec3s normal = glms_vec3_lerpc(closest_normal, deviated_normal,
+                                       closest_material.roughness);
+
+        // Prepare next bounce
+        dir = glms_vec3_reflect(dir, normal);
+        origin = glms_vec3_add(closest_point, glms_vec3_scale(dir, 0.001));
+    }
+
+    result = glms_vec3_scale(result, 1.0f / bounces);
+    result = glms_vec3_clamp(result, 0, 1);
     return result;
 }
 
 int main() {
+    // Seed rng
+    srand(time(NULL));
+
     // Define the space
-    vec3s light_dir = glms_vec3_normalize((vec3s){1, -1, 0.5});
+    vec3s light_dir = glms_vec3_normalize((vec3s){1.0, -0.8, 0.4});
     shape objects[] = {
         {.tag = SPHERE,
-         .material = {.ambient = {0.1745, 0.01175, 0.01175},
-                      .diffuse = {0.61424, 0.04136, 0.04136},
-                      .specular = {0.727811, 0.626959, 0.626959},
-                      .shininess = 128.0},
-         .sphere = {{0, 0, 3}, 1}},
+         .material =
+             {
+                 .albedo = {1, 0, 0},
+                 .roughness = 0.007,
+                 .metallicity = 1.0,
+             },
+         .sphere = {{0, 0, 5}, 1}},
+        {.tag = SPHERE,
+         .material =
+             {
+                 .albedo = {0, 1, 0},
+                 .roughness = 0.12,
+                 .metallicity = 1.0,
+             },
+         .sphere = {{0, -21, 5}, 20}},
     };
     size_t num_objects = 2;
 
@@ -102,20 +139,19 @@ int main() {
         int frame_y = i / WIDTH;
 
         // Calculate ray direction based on FOV and frame dimensions
-        float tangent = tan(FOV / 2);
-        float x = (frame_x - (float)WIDTH / 2) / ((float)WIDTH / 2) * tangent;
+        float tangent = tanf(FOV / 2.0f);
+        float x = ((float)frame_x / WIDTH * 2.0f - 1.0f) * tangent;
         float y =
-            -(frame_y - (float)HEIGHT / 2) / ((float)HEIGHT / 2) * tangent;
+            -((float)frame_y / HEIGHT * 2.0f - 1.0f) * tangent * HEIGHT / WIDTH;
 
-        vec3s ray_ori = {0, 0, 0};
-        vec3s ray_dir = {x, y, 1};
-        glms_vec3_normalize(ray_dir);
+        vec3s initial_origin = {0, 0, 0};
+        vec3s initial_direction = glms_vec3_normalize((vec3s){x, y, 1});
 
-        vec3s result =
-            trace_ray(ray_ori, ray_dir, light_dir, objects, num_objects);
+        // Trace the ray
+        vec3s result = trace_ray(initial_origin, initial_direction, light_dir,
+                                 objects, num_objects);
 
-        // Clamp components b/w 0 and 1 then convert to 0-255 range
-        result = glms_vec3_clamp(result, 0, 1);
+        // Convert to 0-255 range
         result = glms_vec3_scale(result, 255);
 
         frame[i][0] = result.r;

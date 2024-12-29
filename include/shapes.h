@@ -12,10 +12,9 @@ typedef struct {
 } triangle;
 
 typedef struct {
-    vec3s ambient;
-    vec3s diffuse;
-    vec3s specular;
-    float shininess;
+    vec3s albedo;
+    float roughness;
+    float metallicity;
 } shape_material;
 
 typedef struct {
