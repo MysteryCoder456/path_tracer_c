@@ -7,10 +7,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define WIDTH 1280
-#define HEIGHT 800
+#define WIDTH 1152
+#define HEIGHT 720
 #define FOV M_PI / 180.f * 90.0f
 #define MAX_BOUNCES 2
+#define NUM_SAMPLES 32
 
 vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
                 const vec3s light_dir, shape const *objects,
@@ -66,8 +67,8 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
             // TODO: sky color
 
             // sky blue
-            /*vec3s sky_color = {0.5, 0.7, 1.0};*/
-            vec3s sky_color = {0, 0, 0};
+            vec3s sky_color = {135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};
+            /*vec3s sky_color = {0, 0, 0};*/
 
             result = glms_vec3_add(result, sky_color);
             break;
@@ -110,15 +111,15 @@ int main() {
          .material =
              {
                  .albedo = {1, 0, 0},
-                 .roughness = 0.007,
+                 .roughness = 0.9,
                  .metallicity = 1.0,
              },
          .sphere = {{0, 0, 5}, 1}},
         {.tag = SPHERE,
          .material =
              {
-                 .albedo = {0, 1, 0},
-                 .roughness = 0.12,
+                 .albedo = {63.0 / 255.0, 155.0 / 255.0, 11 / 255.0},
+                 .roughness = 0.1,
                  .metallicity = 1.0,
              },
          .sphere = {{0, -21, 5}, 20}},
@@ -147,9 +148,15 @@ int main() {
         vec3s initial_origin = {0, 0, 0};
         vec3s initial_direction = glms_vec3_normalize((vec3s){x, y, 1});
 
-        // Trace the ray
-        vec3s result = trace_ray(initial_origin, initial_direction, light_dir,
-                                 objects, num_objects);
+        // Multisampling
+        vec3s result = glms_vec3_zero();
+        for (int j = 0; j < NUM_SAMPLES; j++) {
+            // Trace the ray
+            vec3s sample = trace_ray(initial_origin, initial_direction,
+                                     light_dir, objects, num_objects);
+            result = glms_vec3_add(result, sample);
+        }
+        result = glms_vec3_scale(result, 1.0f / NUM_SAMPLES);
 
         // Convert to 0-255 range
         result = glms_vec3_scale(result, 255);
