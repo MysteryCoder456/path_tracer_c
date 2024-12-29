@@ -10,13 +10,14 @@
 #define WIDTH 1152
 #define HEIGHT 720
 #define FOV M_PI / 180.f * 90.0f
-#define MAX_BOUNCES 2
-#define NUM_SAMPLES 32
+#define MAX_BOUNCES 8
+#define NUM_SAMPLES 64
 
 vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
                 const vec3s light_dir, shape const *objects,
                 const size_t num_objects) {
     size_t bounces;
+    float multiplier = 1.0f;
     vec3s result = glms_vec3_zero();
 
     vec3s origin = initial_origin;
@@ -64,20 +65,18 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
         }
 
         if (closest_dist == INFINITY) {
-            // TODO: sky color
-
-            // sky blue
+            // TODO: sky color parameter
             vec3s sky_color = {135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};
-            /*vec3s sky_color = {0, 0, 0};*/
-
-            result = glms_vec3_add(result, sky_color);
+            result =
+                glms_vec3_add(result, glms_vec3_scale(sky_color, multiplier));
             break;
         }
 
         // Diffuse
         float diffuse_dot = fmaxf(-glms_vec3_dot(closest_normal, light_dir), 0);
-        result = glms_vec3_add(
-            result, glms_vec3_scale(closest_material.albedo, diffuse_dot));
+        result =
+            glms_vec3_add(result, glms_vec3_scale(closest_material.albedo,
+                                                  multiplier * diffuse_dot));
 
         // Ray bounce
         vec3s random_vector = {(float)rand() / RAND_MAX,
@@ -90,9 +89,10 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
         vec3s normal = glms_vec3_lerpc(closest_normal, deviated_normal,
                                        closest_material.roughness);
 
-        // Prepare next bounce
+        // Prepare next ray bounce
         dir = glms_vec3_reflect(dir, normal);
         origin = glms_vec3_add(closest_point, glms_vec3_scale(dir, 0.001));
+        multiplier *= closest_material.metallicity;
     }
 
     result = glms_vec3_scale(result, 1.0f / bounces);
@@ -111,16 +111,16 @@ int main() {
          .material =
              {
                  .albedo = {1, 0, 0},
-                 .roughness = 0.9,
-                 .metallicity = 1.0,
+                 .roughness = 0.05,
+                 .metallicity = 0.6,
              },
          .sphere = {{0, 0, 5}, 1}},
         {.tag = SPHERE,
          .material =
              {
                  .albedo = {63.0 / 255.0, 155.0 / 255.0, 11 / 255.0},
-                 .roughness = 0.1,
-                 .metallicity = 1.0,
+                 .roughness = 0.12,
+                 .metallicity = 0.4,
              },
          .sphere = {{0, -21, 5}, 20}},
     };
