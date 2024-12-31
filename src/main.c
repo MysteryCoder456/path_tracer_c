@@ -10,8 +10,8 @@
 #define WIDTH 1152
 #define HEIGHT 720
 #define FOV M_PI / 180.f * 90.0f
-#define MAX_BOUNCES 8
-#define NUM_SAMPLES 64
+#define MAX_BOUNCES 4
+#define NUM_SAMPLES 8
 
 vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
                 const vec3s light_dir, shape const *objects,
@@ -111,18 +111,18 @@ int main() {
          .material =
              {
                  .albedo = {1, 0, 0},
-                 .roughness = 0.05,
-                 .metallicity = 0.6,
+                 .roughness = 0.15,
+                 .metallicity = 0.4,
              },
-         .sphere = {{0, 0, 5}, 1}},
+         .sphere = {.center = {0, 0, 5}, .radius = 1}},
         {.tag = SPHERE,
          .material =
              {
-                 .albedo = {63.0 / 255.0, 155.0 / 255.0, 11 / 255.0},
-                 .roughness = 0.12,
-                 .metallicity = 0.4,
+                 .albedo = {0, 0, 0},
+                 .roughness = 0.0,
+                 .metallicity = 1.0,
              },
-         .sphere = {{0, -21, 5}, 20}},
+         .sphere = {.center = {0, -101, 5}, .radius = 100}},
     };
     size_t num_objects = 2;
 
