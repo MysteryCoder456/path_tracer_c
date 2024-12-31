@@ -10,8 +10,8 @@
 #define WIDTH 1152
 #define HEIGHT 720
 #define FOV M_PI / 180.f * 90.0f
-#define MAX_BOUNCES 8
-#define NUM_SAMPLES 128
+#define MAX_BOUNCES 4
+#define NUM_SAMPLES 32
 
 vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
                 const vec3s light_dir, shape const *objects,
@@ -58,7 +58,28 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
                 break;
             }
             case TRIANGLE: {
-                // TODO: Implement triangles
+                // Check whether ray intersects triangle
+                float dist;
+                if (!glms_ray_triangle(origin, dir, obj.triangle.v0,
+                                       obj.triangle.v1, obj.triangle.v2, &dist))
+                    break;
+                if (dist >= closest_dist)
+                    break;
+
+                vec3s intersect =
+                    glms_vec3_add(glms_vec3_scale(dir, dist), origin);
+                vec3s normal = glms_vec3_crossn(
+                    glms_vec3_sub(obj.triangle.v0, obj.triangle.v1),
+                    glms_vec3_sub(obj.triangle.v0, obj.triangle.v2));
+
+                // Check if normal is facing the right way
+                if (glms_vec3_dot(normal, dir) > 0)
+                    normal = glms_vec3_negate(normal);
+
+                closest_dist = dist;
+                closest_point = intersect;
+                closest_normal = normal;
+                closest_material = obj.material;
                 break;
             }
             }
@@ -117,7 +138,7 @@ int main() {
                     .roughness = 0.2,
                     .metallicity = 0.6,
                 },
-            .sphere = {.center = {0, 0, 5}, .radius = 1},
+            .sphere = {.center = {2.5, 0, 5}, .radius = 1},
         },
         {
             .tag = SPHERE,
@@ -127,10 +148,40 @@ int main() {
                     .roughness = 0.6,
                     .metallicity = 0.3,
                 },
-            .sphere = {.center = {0, -101, 5}, .radius = 100},
+            .sphere = {.center = {0, -21, 5}, .radius = 20},
+        },
+        {
+            .tag = TRIANGLE,
+            .material =
+                {
+                    .albedo = {0, 0, 0},
+                    .roughness = 0.0,
+                    .metallicity = 1.0,
+                },
+            .triangle =
+                {
+                    .v0 = {-5, 2.5, 10},
+                    .v1 = {-5, -2.5, 10},
+                    .v2 = {5, -2.5, 10},
+                },
+        },
+        {
+            .tag = TRIANGLE,
+            .material =
+                {
+                    .albedo = {0, 0, 0},
+                    .roughness = 0.0,
+                    .metallicity = 1.0,
+                },
+            .triangle =
+                {
+                    .v0 = {-5, 2.5, 10},
+                    .v1 = {5, 2.5, 10},
+                    .v2 = {5, -2.5, 10},
+                },
         },
     };
-    size_t num_objects = 2;
+    size_t num_objects = 4;
 
     // Initialize frame and fill it with black
     uint8_t frame[WIDTH * HEIGHT][3];
