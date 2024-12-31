@@ -82,8 +82,10 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
         vec3s random_vector = {(float)rand() / RAND_MAX,
                                (float)rand() / RAND_MAX,
                                (float)rand() / RAND_MAX};
-        vec3s deviation = glms_vec3_normalize(
-            glms_vec3_sub(glms_vec3_scale(random_vector, 2), glms_vec3_one()));
+        vec3s deviation = glms_vec3_scale(
+            glms_vec3_normalize(glms_vec3_sub(glms_vec3_scale(random_vector, 2),
+                                              glms_vec3_one())),
+            0.5);
         vec3s deviated_normal =
             glms_vec3_normalize(glms_vec3_add(closest_normal, deviation));
         vec3s normal = glms_vec3_lerpc(closest_normal, deviated_normal,
@@ -111,7 +113,7 @@ int main() {
          .material =
              {
                  .albedo = {1, 0, 0},
-                 .roughness = 0.15,
+                 .roughness = 0.2,
                  .metallicity = 0.4,
              },
          .sphere = {.center = {0, 0, 5}, .radius = 1}},
