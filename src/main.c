@@ -10,8 +10,8 @@
 #define WIDTH 1152
 #define HEIGHT 720
 #define FOV M_PI / 180.f * 90.0f
-#define MAX_BOUNCES 4
-#define NUM_SAMPLES 8
+#define MAX_BOUNCES 8
+#define NUM_SAMPLES 128
 
 vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
                 const vec3s light_dir, shape const *objects,
@@ -109,22 +109,26 @@ int main() {
     // Define the space
     vec3s light_dir = glms_vec3_normalize((vec3s){1.0, -0.8, 0.4});
     shape objects[] = {
-        {.tag = SPHERE,
-         .material =
-             {
-                 .albedo = {1, 0, 0},
-                 .roughness = 0.2,
-                 .metallicity = 0.4,
-             },
-         .sphere = {.center = {0, 0, 5}, .radius = 1}},
-        {.tag = SPHERE,
-         .material =
-             {
-                 .albedo = {0, 0, 0},
-                 .roughness = 0.0,
-                 .metallicity = 1.0,
-             },
-         .sphere = {.center = {0, -101, 5}, .radius = 100}},
+        {
+            .tag = SPHERE,
+            .material =
+                {
+                    .albedo = {0.8, 0.1, 0.1},
+                    .roughness = 0.2,
+                    .metallicity = 0.6,
+                },
+            .sphere = {.center = {0, 0, 5}, .radius = 1},
+        },
+        {
+            .tag = SPHERE,
+            .material =
+                {
+                    .albedo = {63.0 / 255.0, 155.0 / 255.0, 11.0 / 255.0},
+                    .roughness = 0.6,
+                    .metallicity = 0.3,
+                },
+            .sphere = {.center = {0, -101, 5}, .radius = 100},
+        },
     };
     size_t num_objects = 2;
 
