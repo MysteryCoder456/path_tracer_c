@@ -1,7 +1,7 @@
 #include "bitmap.h"
 #include "cglm/struct.h"
+#include "ray.h"
 #include "scene.h"
-#include "shapes.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -19,7 +19,7 @@ vec3s per_pixel(const float x, const float y, const scene *world) {
     const float aspect_ratio = (float)WIDTH / (float)HEIGHT;
 
     vec3s origin = {0, 0, 0};
-    vec3s dir = glms_vec3_normalize((vec3s){
+    vec3s direction = glms_vec3_normalize((vec3s){
         x * tangent_fov_2,
         y * tangent_fov_2 / aspect_ratio,
         1,
@@ -30,68 +30,10 @@ vec3s per_pixel(const float x, const float y, const scene *world) {
     vec3s result = glms_vec3_zero();
 
     for (bounces = 1; bounces <= MAX_BOUNCES; bounces++) {
-        float closest_dist = INFINITY;
-        vec3s closest_point;
-        vec3s closest_normal;
-        size_t closest_material;
+        ray_hit hit = trace_ray(origin, direction, world);
 
-        // Find closest intersection
-        for (int i = 0; i < world->num_objects; i++) {
-            shape obj = world->objects[i];
-
-            switch (obj.tag) {
-            case SPHERE: {
-                // Check whether ray intersects sphere
-                vec4s sphere = {obj.sphere.center.x, obj.sphere.center.y,
-                                obj.sphere.center.z, obj.sphere.radius};
-                float t1, t2;
-                if (!glms_ray_sphere(origin, dir, sphere, &t1, &t2))
-                    break;
-
-                float dist = t1 > 0 ? t1 : t2;
-                if (dist >= closest_dist)
-                    break;
-
-                vec3s intersect =
-                    glms_vec3_add(glms_vec3_scale(dir, dist), origin);
-                vec3s normal = glms_vec3_normalize(
-                    glms_vec3_sub(intersect, obj.sphere.center));
-
-                closest_dist = dist;
-                closest_point = intersect;
-                closest_normal = normal;
-                closest_material = obj.material;
-                break;
-            }
-            case TRIANGLE: {
-                // Check whether ray intersects triangle
-                float dist;
-                if (!glms_ray_triangle(origin, dir, obj.triangle.v0,
-                                       obj.triangle.v1, obj.triangle.v2, &dist))
-                    break;
-                if (dist >= closest_dist)
-                    break;
-
-                vec3s intersect =
-                    glms_vec3_add(glms_vec3_scale(dir, dist), origin);
-                vec3s normal = glms_vec3_crossn(
-                    glms_vec3_sub(obj.triangle.v0, obj.triangle.v1),
-                    glms_vec3_sub(obj.triangle.v0, obj.triangle.v2));
-
-                // Check if normal is facing the right way
-                if (glms_vec3_dot(normal, dir) > 0)
-                    normal = glms_vec3_negate(normal);
-
-                closest_dist = dist;
-                closest_point = intersect;
-                closest_normal = normal;
-                closest_material = obj.material;
-                break;
-            }
-            }
-        }
-
-        if (closest_dist == INFINITY) {
+        // Ray didn't hit anything
+        if (hit.distance < 0) {
             result = glms_vec3_add(
                 result, glms_vec3_scale(world->sky_color, multiplier));
             break;
@@ -99,9 +41,9 @@ vec3s per_pixel(const float x, const float y, const scene *world) {
 
         // Diffuse
         float diffuse_dot =
-            fmaxf(-glms_vec3_dot(closest_normal, world->light_dir), 0);
+            fmaxf(-glms_vec3_dot(hit.normal, world->light_dir), 0);
         result = glms_vec3_add(
-            result, glms_vec3_scale(world->materials[closest_material].albedo,
+            result, glms_vec3_scale(world->materials[hit.material].albedo,
                                     multiplier * diffuse_dot));
 
         // Ray bounce
@@ -113,15 +55,15 @@ vec3s per_pixel(const float x, const float y, const scene *world) {
                                               glms_vec3_one())),
             0.5);
         vec3s deviated_normal =
-            glms_vec3_normalize(glms_vec3_add(closest_normal, deviation));
+            glms_vec3_normalize(glms_vec3_add(hit.normal, deviation));
         vec3s normal =
-            glms_vec3_lerpc(closest_normal, deviated_normal,
-                            world->materials[closest_material].roughness);
+            glms_vec3_lerpc(hit.normal, deviated_normal,
+                            world->materials[hit.material].roughness);
 
         // Prepare next ray bounce
-        dir = glms_vec3_reflect(dir, normal);
-        origin = glms_vec3_add(closest_point, glms_vec3_scale(dir, 0.001));
-        multiplier *= world->materials[closest_material].metallicity;
+        direction = glms_vec3_reflect(direction, normal);
+        origin = glms_vec3_add(hit.point, glms_vec3_scale(direction, 0.001));
+        multiplier *= world->materials[hit.material].metallicity;
     }
 
     result = glms_vec3_scale(result, 1.0f / bounces);
