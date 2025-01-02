@@ -1,4 +1,7 @@
+#pragma once
+
 #include "cglm/types-struct.h"
+#include <stddef.h>
 
 typedef struct {
     vec3s center;
@@ -19,7 +22,7 @@ typedef struct {
 
 typedef struct {
     enum { SPHERE, TRIANGLE } tag;
-    shape_material material;
+    size_t material;
     union {
         sphere sphere;
         triangle triangle;

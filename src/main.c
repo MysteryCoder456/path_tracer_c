@@ -1,5 +1,6 @@
 #include "bitmap.h"
 #include "cglm/struct.h"
+#include "scene.h"
 #include "shapes.h"
 #include <math.h>
 #include <stdint.h>
@@ -7,31 +8,36 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define WIDTH 1152
-#define HEIGHT 720
+#define WIDTH 1280
+#define HEIGHT 800
 #define FOV M_PI / 180.f * 90.0f
 #define MAX_BOUNCES 4
-#define NUM_SAMPLES 32
+#define NUM_SAMPLES 4
 
-vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
-                const vec3s light_dir, shape const *objects,
-                const size_t num_objects) {
+vec3s per_pixel(const float x, const float y, const scene *world) {
+    const float tangent_fov_2 = tanf(FOV / 2.0f);
+    const float aspect_ratio = (float)WIDTH / (float)HEIGHT;
+
+    vec3s origin = {0, 0, 0};
+    vec3s dir = glms_vec3_normalize((vec3s){
+        x * tangent_fov_2,
+        y * tangent_fov_2 / aspect_ratio,
+        1,
+    });
+
     size_t bounces;
     float multiplier = 1.0f;
     vec3s result = glms_vec3_zero();
-
-    vec3s origin = initial_origin;
-    vec3s dir = initial_direction;
 
     for (bounces = 1; bounces <= MAX_BOUNCES; bounces++) {
         float closest_dist = INFINITY;
         vec3s closest_point;
         vec3s closest_normal;
-        shape_material closest_material;
+        size_t closest_material;
 
         // Find closest intersection
-        for (int i = 0; i < num_objects; i++) {
-            shape obj = objects[i];
+        for (int i = 0; i < world->num_objects; i++) {
+            shape obj = world->objects[i];
 
             switch (obj.tag) {
             case SPHERE: {
@@ -86,18 +92,17 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
         }
 
         if (closest_dist == INFINITY) {
-            // TODO: sky color parameter
-            vec3s sky_color = {135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};
-            result =
-                glms_vec3_add(result, glms_vec3_scale(sky_color, multiplier));
+            result = glms_vec3_add(
+                result, glms_vec3_scale(world->sky_color, multiplier));
             break;
         }
 
         // Diffuse
-        float diffuse_dot = fmaxf(-glms_vec3_dot(closest_normal, light_dir), 0);
-        result =
-            glms_vec3_add(result, glms_vec3_scale(closest_material.albedo,
-                                                  multiplier * diffuse_dot));
+        float diffuse_dot =
+            fmaxf(-glms_vec3_dot(closest_normal, world->light_dir), 0);
+        result = glms_vec3_add(
+            result, glms_vec3_scale(world->materials[closest_material].albedo,
+                                    multiplier * diffuse_dot));
 
         // Ray bounce
         vec3s random_vector = {(float)rand() / RAND_MAX,
@@ -109,13 +114,14 @@ vec3s trace_ray(const vec3s initial_origin, const vec3s initial_direction,
             0.5);
         vec3s deviated_normal =
             glms_vec3_normalize(glms_vec3_add(closest_normal, deviation));
-        vec3s normal = glms_vec3_lerpc(closest_normal, deviated_normal,
-                                       closest_material.roughness);
+        vec3s normal =
+            glms_vec3_lerpc(closest_normal, deviated_normal,
+                            world->materials[closest_material].roughness);
 
         // Prepare next ray bounce
         dir = glms_vec3_reflect(dir, normal);
         origin = glms_vec3_add(closest_point, glms_vec3_scale(dir, 0.001));
-        multiplier *= closest_material.metallicity;
+        multiplier *= world->materials[closest_material].metallicity;
     }
 
     result = glms_vec3_scale(result, 1.0f / bounces);
@@ -127,61 +133,26 @@ int main() {
     // Seed rng
     srand(time(NULL));
 
-    // Define the space
-    vec3s light_dir = glms_vec3_normalize((vec3s){1.0, -0.8, 0.4});
-    shape objects[] = {
-        {
-            .tag = SPHERE,
-            .material =
-                {
-                    .albedo = {0.8, 0.1, 0.1},
-                    .roughness = 0.2,
-                    .metallicity = 0.6,
-                },
-            .sphere = {.center = {2.5, 0, 5}, .radius = 1},
-        },
-        {
-            .tag = SPHERE,
-            .material =
-                {
-                    .albedo = {63.0 / 255.0, 155.0 / 255.0, 11.0 / 255.0},
-                    .roughness = 0.6,
-                    .metallicity = 0.3,
-                },
-            .sphere = {.center = {0, -21, 5}, .radius = 20},
-        },
-        {
-            .tag = TRIANGLE,
-            .material =
-                {
-                    .albedo = {0, 0, 0},
-                    .roughness = 0.0,
-                    .metallicity = 1.0,
-                },
-            .triangle =
-                {
-                    .v0 = {-5, 2.5, 10},
-                    .v1 = {-5, -2.5, 10},
-                    .v2 = {5, -2.5, 10},
-                },
-        },
-        {
-            .tag = TRIANGLE,
-            .material =
-                {
-                    .albedo = {0, 0, 0},
-                    .roughness = 0.0,
-                    .metallicity = 1.0,
-                },
-            .triangle =
-                {
-                    .v0 = {-5, 2.5, 10},
-                    .v1 = {5, 2.5, 10},
-                    .v2 = {5, -2.5, 10},
-                },
-        },
-    };
-    size_t num_objects = 4;
+    // Define the scene
+    scene world;
+    scene_init(&world);
+
+    world.light_dir = glms_vec3_normalize((vec3s){0.0, -1.0, 0.0});
+    world.light_color = (vec3s){1, 1, 1};
+    world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};
+
+    int red_metal =
+        scene_add_material(&world, (vec3s){0.8, 0.1, 0.1}, 0.2, 0.8);
+    int green_grass =
+        scene_add_material(&world, (vec3s){0.2471, 0.6078, 0.0431}, 0.6, 0.2);
+    int mirror = scene_add_material(&world, (vec3s){0, 0, 0}, 0.0, 1.0);
+
+    scene_add_sphere(&world, (vec3s){2.5, 0, 5}, 1, red_metal);
+    scene_add_sphere(&world, (vec3s){0, -21, 5}, 20, green_grass);
+    scene_add_triangle(&world, (vec3s){-5, 2.5, 10}, (vec3s){-5, -2.5, 10},
+                       (vec3s){5, -2.5, 10}, mirror);
+    scene_add_triangle(&world, (vec3s){-5, 2.5, 10}, (vec3s){5, 2.5, 10},
+                       (vec3s){5, -2.5, 10}, mirror);
 
     // Initialize frame and fill it with black
     uint8_t frame[WIDTH * HEIGHT][3];
@@ -193,37 +164,29 @@ int main() {
 
     // Render the scene
     for (int i = 0; i < WIDTH * HEIGHT; i++) {
-        int frame_x = i % WIDTH;
-        int frame_y = i / WIDTH;
+        // Calculate screen-space coordinates
+        int x = i % WIDTH;
+        int y = i / WIDTH;
+        float screen_x = ((float)x / WIDTH * 2.0f - 1.0f);
+        float screen_y = -((float)y / HEIGHT * 2.0f - 1.0f);
 
-        // Calculate ray direction based on FOV and frame dimensions
-        float tangent = tanf(FOV / 2.0f);
-        float x = ((float)frame_x / WIDTH * 2.0f - 1.0f) * tangent;
-        float y =
-            -((float)frame_y / HEIGHT * 2.0f - 1.0f) * tangent * HEIGHT / WIDTH;
-
-        vec3s initial_origin = {0, 0, 0};
-        vec3s initial_direction = glms_vec3_normalize((vec3s){x, y, 1});
-
-        // Multisampling
+        // Calculate pixel color
         vec3s result = glms_vec3_zero();
         for (int j = 0; j < NUM_SAMPLES; j++) {
-            // Trace the ray
-            vec3s sample = trace_ray(initial_origin, initial_direction,
-                                     light_dir, objects, num_objects);
+            vec3s sample = per_pixel(screen_x, screen_y, &world);
             result = glms_vec3_add(result, sample);
         }
         result = glms_vec3_scale(result, 1.0f / NUM_SAMPLES);
 
-        // Convert to 0-255 range
+        // Convert to 0-255 range and write to frame buffer
         result = glms_vec3_scale(result, 255);
-
         frame[i][0] = result.r;
         frame[i][1] = result.g;
         frame[i][2] = result.b;
     }
 
-    // Write rendered scene to an image
+    // Write rendered scene to an image then cleanup
     write_bitmap("output.bmp", WIDTH, HEIGHT, frame);
+    scene_free(&world);
     return 0;
 }
