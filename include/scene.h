@@ -10,8 +10,6 @@ typedef struct {
     shape_material *materials;
     size_t num_materials;
     size_t max_materials;
-    vec3s light_direction;
-    vec3s light_color;
     vec3s sky_color;
 } scene;
 
