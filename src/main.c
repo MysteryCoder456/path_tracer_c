@@ -11,8 +11,8 @@
 #define WIDTH 1280
 #define HEIGHT 800
 #define FOV M_PI / 180.f * 90.0f
-#define MAX_BOUNCES 8
-#define NUM_SAMPLES 64
+#define MAX_BOUNCES 6
+#define NUM_SAMPLES 128
 
 #define RANDOM_MAX 0x7FFFFFFF
 
@@ -81,31 +81,34 @@ int main() {
     scene_init(&world);
 
     /*world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};*/
-    world.sky_color = glms_vec3_broadcast(0.5);
+    world.sky_color = glms_vec3_broadcast(0.0);
 
     int gold_sphere =
-        scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.15, 0.8,
+        scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.2, 1.0,
                            (vec3s){0.9372, 0.7490, 0.0157}, 1.0);
-    int red_sphere = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.3,
+    int red_sphere = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.5,
                                         (vec3s){1, 0, 0}, 0.0);
-    int green_sphere = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 0.8,
-                                          0.2, (vec3s){0.0, 1.0, 0.0}, 0.0);
+    int green_sphere = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 1.0,
+                                          0.1, (vec3s){0.0, 1.0, 0.0}, 0.0);
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
                                     glms_vec3_zero(), 0.0);
 
-    scene_add_sphere(&world, (vec3s){2.5, 0.3, 5}, 1, gold_sphere);
-    scene_add_sphere(&world, (vec3s){-2.5, 0.3, 5}, 1, red_sphere);
-    scene_add_sphere(&world, (vec3s){0, -21, 5}, 20, green_sphere);
+    scene_add_sphere(&world, (vec3s){15.0, 15.0, 40}, 25, gold_sphere);
+    scene_add_sphere(&world, (vec3s){-1.5, 0.0, 5.0}, 1, red_sphere);
+    scene_add_sphere(&world, (vec3s){1.5, 0.0, 5.0}, 1, red_sphere);
+    scene_add_sphere(&world, (vec3s){0.0, -51.0, 5.0}, 50, green_sphere);
 
-    scene_add_triangle(&world, (vec3s){-5, 2.5, 10}, (vec3s){-5, -2.5, 10},
-                       (vec3s){5, -2.5, 10}, mirror);
-    scene_add_triangle(&world, (vec3s){-5, 2.5, 10}, (vec3s){5, 2.5, 10},
-                       (vec3s){5, -2.5, 10}, mirror);
+    /*
+    scene_add_triangle(&world, (vec3s){-2.5, 2.5, 10}, (vec3s){-2.5, -2.5, 10},
+                       (vec3s){2.5, -2.5, 10}, mirror);
+    scene_add_triangle(&world, (vec3s){-2.5, 2.5, 10}, (vec3s){2.5, 2.5, 10},
+                       (vec3s){2.5, -2.5, 10}, mirror);
 
     scene_add_triangle(&world, (vec3s){-5, 2.5, -10}, (vec3s){-5, -2.5, -10},
                        (vec3s){5, -2.5, -10}, mirror);
     scene_add_triangle(&world, (vec3s){-5, 2.5, -10}, (vec3s){5, 2.5, -10},
                        (vec3s){5, -2.5, -10}, mirror);
+    */
 
     // Initialize frame and fill it with black
     uint8_t frame[WIDTH * HEIGHT][3];
