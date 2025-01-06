@@ -18,6 +18,9 @@ typedef struct {
     vec3s albedo;
     float roughness;
     float metallicity;
+
+    vec3s emission_color;
+    float emission_strength;
 } shape_material;
 
 typedef struct {

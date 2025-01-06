@@ -27,7 +27,8 @@ void scene_init(scene *s) {
 }
 
 size_t scene_add_material(scene *s, const vec3s albedo, const float roughness,
-                          const float metallicity) {
+                          const float metallicity, const vec3s emission_color,
+                          const float emission_strength) {
     if (s->num_materials == s->max_materials)
         scene_extend_materials(s);
 
@@ -35,6 +36,8 @@ size_t scene_add_material(scene *s, const vec3s albedo, const float roughness,
         .albedo = albedo,
         .roughness = roughness,
         .metallicity = metallicity,
+        .emission_color = emission_color,
+        .emission_strength = emission_strength,
     };
     return s->num_materials - 1;
 }
