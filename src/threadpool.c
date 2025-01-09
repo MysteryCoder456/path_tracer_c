@@ -1,5 +1,7 @@
 #include "threadpool.h"
 #include "vector.h"
+#include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 
 // --- Private ---
@@ -15,14 +17,15 @@ void *threadpool_task_function(void *arg) {
 
     while (pool->threads_running) {
         task = NULL;
-        pthread_mutex_lock(&pool->tasks_mutex);
+        pthread_mutex_lock(&pool->tasks_lock);
 
         // Acquire a task, if any is available
-        if (pool->tasks.size > 0) {
+        if (pool->tasks.size > 0)
             task = vector_pop(&pool->tasks);
-        }
+        else
+            pthread_mutex_unlock(&pool->tasks_exhausted_lock);
 
-        pthread_mutex_unlock(&pool->tasks_mutex);
+        pthread_mutex_unlock(&pool->tasks_lock);
 
         // Execute acquired task
         if (task != NULL) {
@@ -40,7 +43,8 @@ void threadpool_init(threadpool *pool, size_t num_threads) {
     // Initialize struct fields
     vector_init_with_capacity(&pool->threads, num_threads);
     vector_init(&pool->tasks);
-    pthread_mutex_init(&pool->tasks_mutex, NULL);
+    pthread_mutex_init(&pool->tasks_lock, NULL);
+    pthread_mutex_init(&pool->tasks_exhausted_lock, NULL);
     pool->threads_running = true;
 
     // Create and initialize threads
@@ -51,7 +55,7 @@ void threadpool_init(threadpool *pool, size_t num_threads) {
     }
 }
 
-void threadpool_free(threadpool *pool) {
+void threadpool_destroy(threadpool *pool) {
     // Free threads
     pool->threads_running = false;
     for (int i = 0; i < pool->threads.size; i++) {
@@ -69,7 +73,8 @@ void threadpool_free(threadpool *pool) {
     // Free struct fields
     vector_free(&pool->threads);
     vector_free(&pool->tasks);
-    pthread_mutex_destroy(&pool->tasks_mutex);
+    pthread_mutex_destroy(&pool->tasks_lock);
+    pthread_mutex_destroy(&pool->tasks_exhausted_lock);
 }
 
 void threadpool_add_task(threadpool *pool, void (*f)(void *), void *arg) {
@@ -79,7 +84,13 @@ void threadpool_add_task(threadpool *pool, void (*f)(void *), void *arg) {
     task->arg = arg;
 
     // Send created task to queue
-    pthread_mutex_lock(&pool->tasks_mutex);
+    assert(pthread_mutex_trylock(&pool->tasks_exhausted_lock) != EINVAL);
+    pthread_mutex_lock(&pool->tasks_lock);
     vector_push(&pool->tasks, task);
-    pthread_mutex_unlock(&pool->tasks_mutex);
+    pthread_mutex_unlock(&pool->tasks_lock);
+}
+
+void threadpool_wait_for_tasks(threadpool *pool) {
+    pthread_mutex_lock(&pool->tasks_exhausted_lock);
+    pthread_mutex_unlock(&pool->tasks_exhausted_lock);
 }

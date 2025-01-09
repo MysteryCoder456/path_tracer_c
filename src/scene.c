@@ -66,7 +66,7 @@ void scene_add_triangle(scene *s, const vec3s v0, const vec3s v1,
     };
 }
 
-void scene_free(scene *s) {
+void scene_destroy(scene *s) {
     free(s->objects);
     free(s->materials);
 }

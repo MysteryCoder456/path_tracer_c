@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <unistd.h>
 
 #define WIDTH 1280
 #define HEIGHT 800
@@ -157,13 +156,11 @@ int main() {
         thread_args[y] = y;
         threadpool_add_task(&pool, thread_task, &thread_args[y]);
     }
-    while (pool.tasks.size > 0) {
-        // HACK: Wait for all tasks to start executing
-    }
-    threadpool_free(&pool);
+    threadpool_wait_for_tasks(&pool);
+    threadpool_destroy(&pool);
 
     // Write rendered scene to an image then cleanup
     write_bitmap("output.bmp", WIDTH, HEIGHT, frame);
-    scene_free(&world);
+    scene_destroy(&world);
     return 0;
 }

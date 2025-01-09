@@ -25,4 +25,4 @@ void scene_add_sphere(scene *s, const vec3s center, const float radius,
 void scene_add_triangle(scene *s, const vec3s v0, const vec3s v1,
                         const vec3s v2, const size_t material);
 
-void scene_free(scene *s);
+void scene_destroy(scene *s);
