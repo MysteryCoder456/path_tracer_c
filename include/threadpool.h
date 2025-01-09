@@ -12,4 +12,4 @@ typedef struct {
 void threadpool_init(threadpool *pool, size_t num_threads);
 void threadpool_free(threadpool *pool);
 
-void threadpool_add_task(threadpool *pool, void (*f)(void *));
+void threadpool_add_task(threadpool *pool, void (*f)(void *), void *arg);

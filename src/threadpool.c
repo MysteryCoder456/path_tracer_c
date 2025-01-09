@@ -4,9 +4,14 @@
 
 // --- Private ---
 
-void *threadpool_task(void *arg) {
-    threadpool *pool = (threadpool *)arg;
+typedef struct {
     void (*task)(void *);
+    void *arg;
+} threadpool_task;
+
+void *threadpool_task_function(void *arg) {
+    threadpool *pool = (threadpool *)arg;
+    threadpool_task *task;
 
     while (pool->threads_running) {
         task = NULL;
@@ -20,9 +25,10 @@ void *threadpool_task(void *arg) {
         pthread_mutex_unlock(&pool->tasks_mutex);
 
         // Execute acquired task
-        if (task != NULL)
-            // TODO: replace with parameters
-            task(NULL);
+        if (task != NULL) {
+            task->task(task->arg);
+            free(task);
+        }
     }
 
     return NULL;
@@ -41,17 +47,23 @@ void threadpool_init(threadpool *pool, size_t num_threads) {
     for (int i = 0; i < num_threads; i++) {
         pthread_t *new_thread = malloc(sizeof(pthread_t));
         vector_push(&pool->threads, new_thread);
-        pthread_create(new_thread, NULL, threadpool_task, pool);
+        pthread_create(new_thread, NULL, threadpool_task_function, pool);
     }
 }
 
 void threadpool_free(threadpool *pool) {
-    // Free elements in threads vector
+    // Free threads
     pool->threads_running = false;
     for (int i = 0; i < pool->threads.size; i++) {
         pthread_t *thread = pool->threads.data[i];
         pthread_join(*thread, NULL);
         free(thread);
+    }
+
+    // Free unexecuted tasks
+    for (int i = 0; i < pool->tasks.size; i++) {
+        threadpool_task *task = pool->tasks.data[i];
+        free(task);
     }
 
     // Free struct fields
@@ -60,8 +72,14 @@ void threadpool_free(threadpool *pool) {
     pthread_mutex_destroy(&pool->tasks_mutex);
 }
 
-void threadpool_add_task(threadpool *pool, void (*f)(void *)) {
+void threadpool_add_task(threadpool *pool, void (*f)(void *), void *arg) {
+    // Create a task
+    threadpool_task *task = malloc(sizeof(threadpool_task));
+    task->task = f;
+    task->arg = arg;
+
+    // Send created task to queue
     pthread_mutex_lock(&pool->tasks_mutex);
-    vector_push(&pool->tasks, f);
+    vector_push(&pool->tasks, task);
     pthread_mutex_unlock(&pool->tasks_mutex);
 }
