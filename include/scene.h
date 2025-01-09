@@ -3,6 +3,7 @@
 #include "cglm/types-struct.h"
 #include "shapes.h"
 
+// TODO: convert objects and materials to vectors
 typedef struct {
     shape *objects;
     size_t num_objects;
