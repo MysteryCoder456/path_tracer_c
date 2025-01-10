@@ -1,5 +1,6 @@
 #include "vector.h"
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 typedef struct {
