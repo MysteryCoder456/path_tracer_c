@@ -6,8 +6,9 @@
 typedef struct {
     vector threads;
     vector tasks;
-    pthread_mutex_t tasks_lock;
-    pthread_mutex_t tasks_exhausted_lock;
+    pthread_mutex_t tasks_mutex;
+    pthread_cond_t tasks_available_cond;
+    pthread_cond_t tasks_exhausted_cond;
     bool threads_running;
 } threadpool;
 

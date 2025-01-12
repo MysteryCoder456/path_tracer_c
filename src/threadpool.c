@@ -17,15 +17,16 @@ void *threadpool_task_function(void *arg) {
 
     while (pool->threads_running) {
         task = NULL;
-        pthread_mutex_lock(&pool->tasks_lock);
+        pthread_mutex_lock(&pool->tasks_mutex);
 
-        // Acquire a task, if any is available
-        if (pool->tasks.size > 0)
-            task = vector_pop(&pool->tasks);
-        else
-            pthread_mutex_unlock(&pool->tasks_exhausted_lock);
+        // Wait for and acquire a task
+        if (pool->tasks.size == 0) {
+            pthread_cond_signal(&pool->tasks_exhausted_cond);
+            pthread_cond_wait(&pool->tasks_available_cond, &pool->tasks_mutex);
+        }
+        task = vector_pop(&pool->tasks);
 
-        pthread_mutex_unlock(&pool->tasks_lock);
+        pthread_mutex_unlock(&pool->tasks_mutex);
 
         // Execute acquired task
         if (task != NULL) {
@@ -43,8 +44,9 @@ void threadpool_init(threadpool *pool, size_t num_threads) {
     // Initialize struct fields
     vector_init_with_capacity(&pool->threads, num_threads);
     vector_init(&pool->tasks);
-    pthread_mutex_init(&pool->tasks_lock, NULL);
-    pthread_mutex_init(&pool->tasks_exhausted_lock, NULL);
+    pthread_mutex_init(&pool->tasks_mutex, NULL);
+    pthread_cond_init(&pool->tasks_available_cond, NULL);
+    pthread_cond_init(&pool->tasks_exhausted_cond, NULL);
     pool->threads_running = true;
 
     // Create and initialize threads
@@ -58,6 +60,7 @@ void threadpool_init(threadpool *pool, size_t num_threads) {
 void threadpool_destroy(threadpool *pool) {
     // Free threads
     pool->threads_running = false;
+    pthread_cond_signal(&pool->tasks_available_cond); // LIE to the threads!
     for (int i = 0; i < pool->threads.size; i++) {
         pthread_t *thread = pool->threads.data[i];
         pthread_join(*thread, NULL);
@@ -73,8 +76,9 @@ void threadpool_destroy(threadpool *pool) {
     // Free struct fields
     vector_free(&pool->threads);
     vector_free(&pool->tasks);
-    pthread_mutex_destroy(&pool->tasks_lock);
-    pthread_mutex_destroy(&pool->tasks_exhausted_lock);
+    pthread_mutex_destroy(&pool->tasks_mutex);
+    pthread_cond_destroy(&pool->tasks_available_cond);
+    pthread_cond_destroy(&pool->tasks_exhausted_cond);
 }
 
 void threadpool_add_task(threadpool *pool, void (*f)(void *), void *arg) {
@@ -84,13 +88,14 @@ void threadpool_add_task(threadpool *pool, void (*f)(void *), void *arg) {
     task->arg = arg;
 
     // Send created task to queue
-    assert(pthread_mutex_trylock(&pool->tasks_exhausted_lock) != EINVAL);
-    pthread_mutex_lock(&pool->tasks_lock);
+    pthread_mutex_lock(&pool->tasks_mutex);
     vector_push(&pool->tasks, task);
-    pthread_mutex_unlock(&pool->tasks_lock);
+    pthread_cond_signal(&pool->tasks_available_cond);
+    pthread_mutex_unlock(&pool->tasks_mutex);
 }
 
 void threadpool_wait_for_tasks(threadpool *pool) {
-    pthread_mutex_lock(&pool->tasks_exhausted_lock);
-    pthread_mutex_unlock(&pool->tasks_exhausted_lock);
+    pthread_mutex_lock(&pool->tasks_mutex);
+    pthread_cond_wait(&pool->tasks_exhausted_cond, &pool->tasks_mutex);
+    pthread_mutex_unlock(&pool->tasks_mutex);
 }
