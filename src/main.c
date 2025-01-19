@@ -12,8 +12,8 @@
 #define WIDTH 1280
 #define HEIGHT 800
 #define FOV M_PI / 180.f * 90.0f
-#define MAX_BOUNCES 6
-#define NUM_SAMPLES 128
+#define MAX_BOUNCES 4
+#define NUM_SAMPLES 64
 
 #define RANDOM_MAX 0x7FFFFFFF
 
@@ -35,6 +35,7 @@ vec3s incident_light(vec3s origin, vec3s direction, const scene *world,
     // Recursion base case
     if (bounces > MAX_BOUNCES)
         return world->sky_color;
+    bounces++;
 
     ray_hit hit = trace_ray(origin, direction, world);
 
@@ -51,12 +52,36 @@ vec3s incident_light(vec3s origin, vec3s direction, const scene *world,
     vec3s deviation = glms_vec3_scale(rand_unit_sphere(), mat.roughness * 0.5);
     vec3s normal = glms_vec3_normalize(glms_vec3_add(hit.normal, deviation));
 
-    // Calculate incident light
-    direction = glms_vec3_normalize(glms_vec3_reflect(direction, normal));
-    origin = glms_vec3_add(hit.point, glms_vec3_scale(direction, 0.001));
-    bounces++;
-    vec3s Li = incident_light(origin, direction, world, bounces);
+    // Calculate reflected incident light
+    vec3s reflected_Li = glms_vec3_zero();
+    if (mat.transparency < 1.0) {
+        vec3s reflect_direction =
+            glms_vec3_normalize(glms_vec3_reflect(direction, normal));
+        vec3s reflect_origin =
+            glms_vec3_add(hit.point, glms_vec3_scale(reflect_direction, 0.001));
+        reflected_Li =
+            incident_light(reflect_origin, reflect_direction, world, bounces);
+    }
 
+    // Calculate transmitted incident light
+    vec3s transmitted_Li = glms_vec3_zero();
+    if (mat.transparency > 0.0) {
+        float dot = glms_vec3_dot(direction, normal);
+        float refractive_index = dot < 0 ? 1.5 : 1 / 1.5;
+        vec3s refraction_normal = dot < 0 ? normal : glms_vec3_negate(normal);
+
+        vec3s transmit_origin, transmit_direction;
+        if (glms_vec3_refract(direction, refraction_normal,
+                              1.0 / refractive_index, &transmit_direction)) {
+            transmit_direction = glms_vec3_normalize(transmit_direction);
+            transmit_origin = glms_vec3_add(
+                hit.point, glms_vec3_scale(transmit_direction, 0.001));
+            transmitted_Li = incident_light(transmit_origin, transmit_direction,
+                                            world, bounces);
+        }
+    }
+
+    vec3s Li = glms_vec3_lerp(reflected_Li, transmitted_Li, mat.transparency);
     return glms_vec3_add(Le, glms_vec3_mul(Li, mat.albedo));
 }
 
@@ -108,24 +133,30 @@ int main() {
     /*scene world;*/
     scene_init(&world);
 
-    /*world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 /
-    255.0};*/
+    /*world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};*/
     world.sky_color = glms_vec3_broadcast(0.0);
 
-    int gold_sphere =
+    int sun =
         scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.2, 1.0,
-                           (vec3s){0.9372, 0.7490, 0.0157}, 1.0);
-    int red_sphere = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.5,
-                                        (vec3s){1, 0, 0}, 0.0);
-    int green_sphere = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 1.0,
-                                          0.1, (vec3s){0.0, 1.0, 0.0}, 0.0);
+                           (vec3s){0.9372, 0.7490, 0.0157}, 1.0, 0.0);
+    int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.5,
+                                         (vec3s){1, 0, 0}, 0.0, 0.0);
+    int green_grass = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 1.0,
+                                         0.1, (vec3s){0.0, 1.0, 0.0}, 0.0, 0.0);
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
-                                    glms_vec3_zero(), 0.0);
+                                    glms_vec3_zero(), 0.0, 0.0);
+    int glass = scene_add_material(&world, (vec3s){1.0, 1.0, 1.0}, 0.0, 0.0,
+                                   (vec3s){1.0, 1.0, 1.0}, 0.0, 1.0);
 
-    scene_add_sphere(&world, (vec3s){15.0, 15.0, 40}, 25, gold_sphere);
-    scene_add_sphere(&world, (vec3s){-1.5, 0.0, 5.0}, 1, red_sphere);
-    scene_add_sphere(&world, (vec3s){1.5, 0.0, 5.0}, 1, red_sphere);
-    scene_add_sphere(&world, (vec3s){0.0, -51.0, 5.0}, 50, green_sphere);
+    scene_add_sphere(&world, (vec3s){25.0, 25.0, 40}, 25, sun);
+    scene_add_sphere(&world, (vec3s){-0.5, 0.0, 5.0}, 1, red_plastic);
+    scene_add_sphere(&world, (vec3s){0.5, -0.5, 2.5}, 0.5, glass);
+    /*scene_add_sphere(&world, (vec3s){0.0, -51.0, 5.0}, 50, green_grass);*/
+
+    scene_add_triangle(&world, (vec3s){-50, -1, -50}, (vec3s){50, -1, -50},
+                       (vec3s){50, -1, 50}, green_grass);
+    scene_add_triangle(&world, (vec3s){-50, -1, -50}, (vec3s){-50, -1, 50},
+                       (vec3s){50, -1, 50}, green_grass);
 
     /*
     scene_add_triangle(&world, (vec3s){-2.5, 2.5, 10}, (vec3s){-2.5, -2.5,
@@ -155,6 +186,7 @@ int main() {
     for (int y = 0; y < HEIGHT; y++) {
         thread_args[y] = y;
         threadpool_add_task(&pool, thread_task, &thread_args[y]);
+        /*thread_task(&thread_args[y]);*/
     }
     threadpool_wait_for_tasks(&pool);
     threadpool_destroy(&pool);

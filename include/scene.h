@@ -18,7 +18,8 @@ void scene_init(scene *s);
 
 size_t scene_add_material(scene *s, const vec3s albedo, const float roughness,
                           const float metallicity, const vec3s emission_color,
-                          const float emission_strength);
+                          const float emission_strength,
+                          const float transparency);
 
 void scene_add_sphere(scene *s, const vec3s center, const float radius,
                       const size_t material);

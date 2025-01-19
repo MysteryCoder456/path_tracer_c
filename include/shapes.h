@@ -21,6 +21,8 @@ typedef struct {
 
     vec3s emission_color;
     float emission_strength;
+
+    float transparency;
 } shape_material;
 
 typedef struct {
