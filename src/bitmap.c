@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 void write_bitmap(char *filename, unsigned int imgwidth, unsigned int imgheight,
-                  uint8_t pixels[][3]) {
+                  uint8_t *pixels) {
     FILE *fptr = fopen(filename, "wb");
     size_t row_padding = (4 - (imgwidth * 3) % 4) % 4;
 
@@ -47,9 +47,9 @@ void write_bitmap(char *filename, unsigned int imgwidth, unsigned int imgheight,
             int idx = y * imgwidth + x;
 
             // Write in BGR format
-            fputc(pixels[idx][2], fptr);
-            fputc(pixels[idx][1], fptr);
-            fputc(pixels[idx][0], fptr);
+            fputc(pixels[3 * idx + 2], fptr);
+            fputc(pixels[3 * idx + 1], fptr);
+            fputc(pixels[3 * idx + 0], fptr);
         }
 
         // apply padding
