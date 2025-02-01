@@ -11,15 +11,12 @@
 #define WIDTH 1280
 #define HEIGHT 800
 
-static scene world;
-static uint8_t frame[WIDTH * HEIGHT * 3];
-
 int main() {
     // Seed rng
     srandom(time(NULL));
 
     // Define the scene
-    /*scene world;*/
+    scene world;
     scene_init(&world);
 
     /*world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};*/
@@ -61,7 +58,7 @@ int main() {
     */
 
     // Initialize frame and fill it with black
-    /*uint8_t frame[WIDTH * HEIGHT][3];*/
+    uint8_t frame[WIDTH * HEIGHT * 3];
     for (int i = 0; i < WIDTH * HEIGHT; i++) {
         frame[3 * i + 0] = 0;
         frame[3 * i + 1] = 0;
