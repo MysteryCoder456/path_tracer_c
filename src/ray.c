@@ -1,5 +1,5 @@
 #include "ray.h"
-#include "cglm/struct.h"
+#include <cglm/struct.h>
 
 ray_hit trace_ray(const vec3s origin, const vec3s direction,
                   const scene *world) {

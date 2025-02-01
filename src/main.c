@@ -1,5 +1,4 @@
 #include "bitmap.h"
-#include "cglm/struct.h"
 #include "renderer.h"
 #include "scene.h"
 #include "threadpool.h"
@@ -8,12 +7,47 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define GLFW_INCLUDE_NONE
+
+#include <GLFW/glfw3.h>
+#include <cglm/struct.h>
+#include <glad/gl.h>
+
 #define WIDTH 1280
 #define HEIGHT 800
+
+void error_callback(int error, const char *description) {
+    fprintf(stderr, "Error: %s\n", description);
+}
 
 int main() {
     // Seed rng
     srandom(time(NULL));
+
+    // Initialize GLFW
+    if (!glfwInit()) {
+        fprintf(stderr, "Failed to initialize GLFW\n");
+        return 1;
+    }
+    glfwSetErrorCallback(error_callback);
+
+    // Create a window
+    GLFWwindow *window =
+        glfwCreateWindow(WIDTH, HEIGHT, "Path Tracer", NULL, NULL);
+    if (!window) {
+        fprintf(stderr, "Failed to create GLFW window\n");
+        return -1;
+    }
+
+    // Additional GLFW options
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+
+    // Load OpenGL function pointers
+    gladLoadGL(glfwGetProcAddress);
 
     // Define the scene
     scene world;
@@ -83,8 +117,22 @@ int main() {
     threadpool_wait_for_tasks(&pool);
     threadpool_destroy(&pool);
 
-    // Write rendered scene to an image then cleanup
+    // Write rendered scene to an image
     write_bitmap("output.bmp", WIDTH, HEIGHT, frame);
+
+    // Main loop
+    while (!glfwWindowShouldClose(window)) {
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
     scene_destroy(&world);
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
     return 0;
 }

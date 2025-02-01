@@ -1,6 +1,6 @@
 #include "renderer.h"
-#include "cglm/struct.h"
 #include "ray.h"
+#include <cglm/struct.h>
 #include <math.h>
 
 #define RANDOM_MAX 0x7FFFFFFF
