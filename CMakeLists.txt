@@ -21,3 +21,5 @@ add_subdirectory(external/cglm EXCLUDE_FROM_ALL)
 # Copy shaders
 configure_file(shaders/triangle_vert.glsl shaders/triangle_vert.glsl COPYONLY)
 configure_file(shaders/triangle_frag.glsl shaders/triangle_frag.glsl COPYONLY)
+configure_file(shaders/rtx_vert.glsl shaders/rtx_vert.glsl COPYONLY)
+configure_file(shaders/rtx_frag.glsl shaders/rtx_frag.glsl COPYONLY)

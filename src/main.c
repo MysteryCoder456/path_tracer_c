@@ -47,8 +47,7 @@ int main() {
     gladLoadGL(glfwGetProcAddress);
 
     // Build shader
-    int shader = build_shader("shaders/triangle_vert.glsl",
-                              "shaders/triangle_frag.glsl");
+    int shader = build_shader("shaders/rtx_vert.glsl", "shaders/rtx_frag.glsl");
     if (shader == -1)
         return 1;
 
@@ -57,20 +56,17 @@ int main() {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    float vertices[15] = {0.0, 0.5, 1.0, 0.0,  0.0, -0.5, -0.5, 0.0,
-                          1.0, 0.0, 0.5, -0.5, 0.0, 0.0,  1.0};
+    float vertices[12] = {
+        -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0,
+    };
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float),
                           (void *)0);
     glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
-                          (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -85,7 +81,7 @@ int main() {
 
         glUseProgram(shader);
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
