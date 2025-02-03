@@ -1,4 +1,5 @@
-#include "shader.h"
+#include "gpu/shader.h"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,6 +51,8 @@ int main() {
     int shader = build_shader("shaders/rtx_vert.glsl", "shaders/rtx_frag.glsl");
     if (shader == -1)
         return 1;
+    int aspect_ratio_loc = glGetUniformLocation(shader, "aspect_ratio");
+    int fov_loc = glGetUniformLocation(shader, "fov");
 
     // Create vertex array and buffer
     GLuint vao;
@@ -71,16 +74,21 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    float fov = 90.0 * M_PI / 180.0;
+
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         glViewport(0, 0, width, height);
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0, 0.0, 0.0, 1.0);
 
         glUseProgram(shader);
         glBindVertexArray(vao);
+        glUniform1f(aspect_ratio_loc, (float)width / (float)(height));
+        glUniform1f(fov_loc, fov);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(window);

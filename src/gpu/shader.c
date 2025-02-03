@@ -1,4 +1,4 @@
-#include "shader.h"
+#include "gpu/shader.h"
 #include <glad/gl.h>
 #include <stdio.h>
 
