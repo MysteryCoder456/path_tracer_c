@@ -117,7 +117,7 @@ vec3 incident_light(vec3 origin, vec3 direction, int bounces) {
     if (mat.transparency < 1.0) {
         vec3 reflect_direction = normalize(reflect(direction, normal));
         vec3 reflect_origin = hit.point + 0.0001 * reflect_direction;
-        reflected_Li = incident_light(reflected_origin, reflected_direction, bounces);
+        reflected_Li = incident_light(reflect_origin, reflect_direction, bounces);
     }
 
     // Transmitted incident light
@@ -126,7 +126,7 @@ vec3 incident_light(vec3 origin, vec3 direction, int bounces) {
         float dot = dot(direction, normal);
 
         float refractive_index;
-        float refraction_normal;
+        vec3 refraction_normal;
         if (dot < 0) {
             refractive_index = 1.0 / 1.5;
             refraction_normal = normal;
@@ -137,7 +137,7 @@ vec3 incident_light(vec3 origin, vec3 direction, int bounces) {
 
         vec3 transmit_direction = refract(direction, refraction_normal, refractive_index);
         vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
-        transmitted_Li = incident_light(transmit_origin, transmit_direction, world, bounces);
+        transmitted_Li = incident_light(transmit_origin, transmit_direction, bounces);
     }
 
     vec3 Li = mix(reflected_Li, transmitted_Li, mat.transparency);
