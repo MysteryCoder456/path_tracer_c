@@ -20,6 +20,114 @@ void error_callback(int error, const char *description) {
     fprintf(stderr, "Error: %s\n", description);
 }
 
+void uniform_materials(scene *world, int program) {
+    glUseProgram(program);
+
+    for (int i = 0; i < world->num_materials; i++) {
+        shape_material mat = world->materials[i];
+
+        char identifier[32];
+        sprintf(identifier, "materials[%d].", i);
+
+        char albedo[64];
+        strcpy(albedo, identifier);
+        strcat(albedo, "albedo");
+        glUniform3fv(glGetUniformLocation(program, albedo), 1, mat.albedo.raw);
+
+        char roughness[64];
+        strcpy(roughness, identifier);
+        strcat(roughness, "roughness");
+        glUniform1f(glGetUniformLocation(program, roughness), mat.roughness);
+
+        char metallicity[64];
+        strcpy(metallicity, identifier);
+        strcat(metallicity, "metallicity");
+        glUniform1f(glGetUniformLocation(program, metallicity),
+                    mat.metallicity);
+
+        char emission_color[64];
+        strcpy(emission_color, identifier);
+        strcat(emission_color, "emission_color");
+        glUniform3fv(glGetUniformLocation(program, emission_color), 1,
+                     mat.emission_color.raw);
+
+        char emission_strength[64];
+        strcpy(emission_strength, identifier);
+        strcat(emission_strength, "emission_strength");
+        glUniform1f(glGetUniformLocation(program, emission_strength),
+                    mat.emission_strength);
+
+        char transparency[64];
+        strcpy(transparency, identifier);
+        strcat(transparency, "transparency");
+        glUniform1f(glGetUniformLocation(program, transparency),
+                    mat.transparency);
+    }
+}
+
+void uniform_objects(scene *world, int program) {
+    glUseProgram(program);
+
+    int spheres = 0;
+    int triangles = 0;
+    for (int i = 0; i < world->num_objects; i++) {
+        shape obj = world->objects[i];
+        char identifier[32];
+
+        switch (obj.tag) {
+        case SPHERE: {
+            sprintf(identifier, "spheres[%d].", spheres);
+
+            char center[64];
+            strcpy(center, identifier);
+            strcat(center, "center");
+            glUniform3fv(glGetUniformLocation(program, center), 1,
+                         obj.sphere.center.raw);
+
+            char radius[64];
+            strcpy(radius, identifier);
+            strcat(radius, "radius");
+            glUniform1f(glGetUniformLocation(program, radius),
+                        obj.sphere.radius);
+
+            spheres++;
+            break;
+        }
+        case TRIANGLE: {
+            sprintf(identifier, "triangles[%d].", triangles);
+
+            char v0[64];
+            strcpy(v0, identifier);
+            strcat(v0, "v0");
+            glUniform3fv(glGetUniformLocation(program, v0), 1,
+                         obj.triangle.v0.raw);
+
+            char v1[64];
+            strcpy(v1, identifier);
+            strcat(v1, "v1");
+            glUniform3fv(glGetUniformLocation(program, v1), 1,
+                         obj.triangle.v1.raw);
+
+            char v2[64];
+            strcpy(v2, identifier);
+            strcat(v2, "v2");
+            glUniform3fv(glGetUniformLocation(program, v2), 1,
+                         obj.triangle.v2.raw);
+
+            triangles++;
+            break;
+        }
+        }
+
+        char material[64];
+        strcpy(material, identifier);
+        strcat(material, "material");
+        glUniform1i(glGetUniformLocation(program, material), obj.material);
+    }
+    glUniform1i(glGetUniformLocation(program, "sphere_count"), spheres);
+    glUniform1i(glGetUniformLocation(program, "triangle_count"), triangles);
+}
+
 int main() {
     // Seed RNG
     srandom(time(NULL));
@@ -113,113 +221,35 @@ int main() {
                        (vec3s){50, -1, 50}, green_grass);
                        */
 
+    /*
+    scene_add_triangle(&world, (vec3s){-2.5, 2.5, 10}, (vec3s){-2.5, -2.5, 10},
+                       (vec3s){2.5, -2.5, 10}, mirror);
+    scene_add_triangle(&world, (vec3s){-2.5, 2.5, 10}, (vec3s){2.5, 2.5, 10},
+                       (vec3s){2.5, -2.5, 10}, mirror);
+
+    scene_add_triangle(&world, (vec3s){-5, 2.5, -10}, (vec3s){-5, -2.5, -10},
+                       (vec3s){5, -2.5, -10}, mirror);
+    scene_add_triangle(&world, (vec3s){-5, 2.5, -10}, (vec3s){5, 2.5, -10},
+                       (vec3s){5, -2.5, -10}, mirror);
+                       */
+
     glUseProgram(shader);
 
-    // Set materials
-    for (int i = 0; i < world.num_materials; i++) {
-        shape_material mat = world.materials[i];
-
-        char identifier[32];
-        sprintf(identifier, "materials[%d].", i);
-
-        char albedo[64];
-        strcpy(albedo, identifier);
-        strcat(albedo, "albedo");
-        glUniform3fv(glGetUniformLocation(shader, albedo), 1, mat.albedo.raw);
-
-        char roughness[64];
-        strcpy(roughness, identifier);
-        strcat(roughness, "roughness");
-        glUniform1f(glGetUniformLocation(shader, roughness), mat.roughness);
-
-        char metallicity[64];
-        strcpy(metallicity, identifier);
-        strcat(metallicity, "metallicity");
-        glUniform1f(glGetUniformLocation(shader, metallicity), mat.metallicity);
-
-        char emission_color[64];
-        strcpy(emission_color, identifier);
-        strcat(emission_color, "emission_color");
-        glUniform3fv(glGetUniformLocation(shader, emission_color), 1,
-                     mat.emission_color.raw);
-
-        char emission_strength[64];
-        strcpy(emission_strength, identifier);
-        strcat(emission_strength, "emission_strength");
-        glUniform1f(glGetUniformLocation(shader, emission_strength),
-                    mat.emission_strength);
-
-        char transparency[64];
-        strcpy(transparency, identifier);
-        strcat(transparency, "transparency");
-        glUniform1f(glGetUniformLocation(shader, transparency),
-                    mat.transparency);
-    }
-
-    // Set spheres and triangles
-    int spheres = 0;
-    int triangles = 0;
-    for (int i = 0; i < world.num_objects; i++) {
-        shape obj = world.objects[i];
-        char identifier[32];
-
-        switch (obj.tag) {
-        case SPHERE: {
-            sprintf(identifier, "spheres[%d].", spheres);
-
-            char center[64];
-            strcpy(center, identifier);
-            strcat(center, "center");
-            glUniform3fv(glGetUniformLocation(shader, center), 1,
-                         obj.sphere.center.raw);
-
-            char radius[64];
-            strcpy(radius, identifier);
-            strcat(radius, "radius");
-            glUniform1f(glGetUniformLocation(shader, radius),
-                        obj.sphere.radius);
-
-            spheres++;
-            break;
-        }
-        case TRIANGLE: {
-            sprintf(identifier, "triangles[%d].", triangles);
-
-            char v0[64];
-            strcpy(v0, identifier);
-            strcat(v0, "v0");
-            glUniform3fv(glGetUniformLocation(shader, v0), 1,
-                         obj.triangle.v0.raw);
-
-            char v1[64];
-            strcpy(v1, identifier);
-            strcat(v1, "v1");
-            glUniform3fv(glGetUniformLocation(shader, v1), 1,
-                         obj.triangle.v1.raw);
-
-            char v2[64];
-            strcpy(v2, identifier);
-            strcat(v2, "v2");
-            glUniform3fv(glGetUniformLocation(shader, v2), 1,
-                         obj.triangle.v2.raw);
-
-            triangles++;
-            break;
-        }
-        }
-
-        char material[64];
-        strcpy(material, identifier);
-        strcat(material, "material");
-        glUniform1i(glGetUniformLocation(shader, material), obj.material);
-    }
-    glUniform1i(glGetUniformLocation(shader, "sphere_count"), spheres);
-    glUniform1i(glGetUniformLocation(shader, "triangle_count"), triangles);
+    // Send materials and objects to GPU
+    uniform_materials(&world, shader);
+    uniform_objects(&world, shader);
 
     // Main loop
+    double time = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
-        double time = glfwGetTime();
+        double prevTime = time;
+        time = glfwGetTime();
+        double delta_time = time - prevTime;
         /*printf("%f\n", time);*/
+
+        world.objects[1].sphere.center.x = 1.5 * cos(time) - 1.0;
+        world.objects[1].sphere.center.z = 1.5 * sin(time) + 5.0;
+        uniform_objects(&world, shader);
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);

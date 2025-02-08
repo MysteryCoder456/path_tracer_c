@@ -1,8 +1,7 @@
 #version 410
 
 #define M_PI 3.1415926535897932384626433832795
-
-const int MAX_BOUNCES = 16;
+#define MAX_BOUNCES 3
 
 struct Material {
     vec3 albedo;
@@ -174,7 +173,7 @@ vec3 incident_light(vec3 origin, vec3 direction) {
         vec3 Le = mat.emission_color * mat.emission_strength;
 
         // Roughness normal
-        vec3 deviation = rand_unit_sphere(origin + direction) * mat.roughness;
+        vec3 deviation = rand_unit_sphere(origin + direction) * mat.roughness * 0.5;
         vec3 normal = normalize(hit.normal + deviation);
 
         // Adding contributions
