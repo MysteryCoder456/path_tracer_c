@@ -1,7 +1,8 @@
 #version 410
 
 #define M_PI 3.1415926535897932384626433832795
-#define MAX_BOUNCES 4
+
+const int MAX_BOUNCES = 16;
 
 struct Material {
     vec3 albedo;
@@ -36,6 +37,8 @@ struct Triangle {
 in vec2 coords;
 out vec4 FragColor;
 
+uniform float random_seed;
+
 uniform float aspect_ratio;
 uniform float fov;
 uniform vec3 sky_color;
@@ -49,14 +52,22 @@ uniform int triangle_count;
 
 float tan_fov_2;
 
+float rand(vec2 co) {
+    return fract(sin(dot(co, vec2(12.9898, 78.233)) + random_seed) * 43758.5453);
+}
+
+vec3 rand_unit_sphere(vec3 seed) {
+    return normalize(vec3(rand(seed.xy), rand(seed.yz), rand(seed.zx)));
+}
+
 float ray_sphere_intersect(vec3 o, vec3 d, Sphere s) {
     // Translate ray so that sphere is at origin
-    o -= s.center;
+    vec3 o1 = o - s.center;
 
     // Quadratic equation
     float a = dot(d, d);
-    float b = 2.0 * (o.x * d.x + o.y * d.y + o.z * d.z);
-    float c = dot(o, o) - pow(s.radius, 2.0);
+    float b = 2.0 * (o1.x * d.x + o1.y * d.y + o1.z * d.z);
+    float c = dot(o1, o1) - pow(s.radius, 2.0);
     float det = b * b - 4.0 * a * c;
 
     // Equation has no real solutions
@@ -163,7 +174,7 @@ vec3 incident_light(vec3 origin, vec3 direction) {
         vec3 Le = mat.emission_color * mat.emission_strength;
 
         // Roughness normal
-        vec3 deviation = normalize(noise3(hit.point.x + hit.point.y + hit.point.z)) * mat.roughness * 0.5;
+        vec3 deviation = rand_unit_sphere(origin + direction) * mat.roughness;
         vec3 normal = normalize(hit.normal + deviation);
 
         // Adding contributions
@@ -205,10 +216,10 @@ vec3 incident_light(vec3 origin, vec3 direction) {
 
 vec3 per_pixel() {
     vec3 origin = vec3(0.0);
-    vec3 direction = vec3(
-            coords.x * tan_fov_2,
-            coords.y * tan_fov_2 / aspect_ratio,
-            1.0);
+    vec3 direction = normalize(vec3(
+                coords.x * tan_fov_2,
+                coords.y * tan_fov_2 / aspect_ratio,
+                1.0));
 
     return incident_light(origin, direction);
 }
