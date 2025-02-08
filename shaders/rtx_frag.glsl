@@ -141,55 +141,66 @@ RayHit trace_ray(vec3 origin, vec3 direction) {
     return closest_hit;
 }
 
-vec3 incident_light(vec3 origin, vec3 direction, int bounces) {
-    // Recursion base case
-    if (bounces > MAX_BOUNCES)
-        return sky_color;
-    bounces++;
+vec3 incident_light(vec3 origin, vec3 direction) {
+    vec3 color = vec3(1.0);
+    vec3 total_light = vec3(0.0);
 
-    // Trace ray
-    RayHit hit = trace_ray(origin, direction);
-    if (hit.distance < 0)
-        return sky_color;
-    Material mat = materials[hit.material];
-
-    // Surface emission
-    vec3 Le = mat.emission_color * mat.emission_strength;
-
-    // Roughness normal
-    vec3 deviation = normalize(noise3(hit.point.x + hit.point.y + hit.point.z)) * mat.roughness * 0.5;
-    vec3 normal = normalize(hit.normal + deviation);
-
-    // Reflected incident light
-    vec3 reflected_Li = vec3(0.0);
-    if (mat.transparency < 1.0) {
-        vec3 reflect_direction = normalize(reflect(direction, normal));
-        vec3 reflect_origin = hit.point + 0.0001 * reflect_direction;
-        reflected_Li = incident_light(reflect_origin, reflect_direction, bounces);
-    }
-
-    // Transmitted incident light
-    vec3 transmitted_Li = vec3(0.0);
-    if (mat.transparency > 0.0) {
-        float dot = dot(direction, normal);
-
-        float refractive_index;
-        vec3 refraction_normal;
-        if (dot < 0) {
-            refractive_index = 1.0 / 1.5;
-            refraction_normal = normal;
-        } else {
-            refractive_index = 1.5;
-            refraction_normal = -normal;
+    int bounces = 0;
+    while (true) {
+        if (bounces > MAX_BOUNCES) {
+            total_light += color * sky_color;
+            break;
         }
 
-        vec3 transmit_direction = refract(direction, refraction_normal, refractive_index);
-        vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
-        transmitted_Li = incident_light(transmit_origin, transmit_direction, bounces);
+        // Trace ray
+        RayHit hit = trace_ray(origin, direction);
+        if (hit.distance < 0) {
+            total_light += color * sky_color;
+        }
+        Material mat = materials[hit.material];
+
+        // Surface emission
+        vec3 Le = mat.emission_color * mat.emission_strength;
+
+        // Roughness normal
+        vec3 deviation = normalize(noise3(hit.point.x + hit.point.y + hit.point.z)) * mat.roughness * 0.5;
+        vec3 normal = normalize(hit.normal + deviation);
+
+        // Adding contributions
+        total_light += color * Le;
+        color *= mat.albedo;
+
+        // Prepare for next bounce
+        vec3 reflect_direction = normalize(reflect(direction, normal));
+        vec3 reflect_origin = hit.point + 0.0001 * reflect_direction;
+        origin = reflect_origin;
+        direction = reflect_direction;
+        bounces++;
     }
 
-    vec3 Li = mix(reflected_Li, transmitted_Li, mat.transparency);
-    return Le + mat.albedo * Li;
+    // TODO: Transmitted incident light
+
+    // vec3 transmitted_Li = vec3(0.0);
+    // if (mat.transparency > 0.0) {
+    //     float dot = dot(direction, normal);
+    //
+    //     float refractive_index;
+    //     vec3 refraction_normal;
+    //     if (dot < 0) {
+    //         refractive_index = 1.0 / 1.5;
+    //         refraction_normal = normal;
+    //     } else {
+    //         refractive_index = 1.5;
+    //         refraction_normal = -normal;
+    //     }
+    //
+    //     vec3 transmit_direction = refract(direction, refraction_normal, refractive_index);
+    //     vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
+    //     transmitted_Li = incident_light(transmit_origin, transmit_direction, bounces);
+    // }
+
+    // return Le + mat.albedo * Li;
+    return total_light;
 }
 
 vec3 per_pixel() {
@@ -199,7 +210,7 @@ vec3 per_pixel() {
             coords.y * tan_fov_2 / aspect_ratio,
             1.0);
 
-    return incident_light(origin, direction, 0);
+    return incident_light(origin, direction);
 }
 
 void main() {
