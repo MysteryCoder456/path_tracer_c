@@ -2,6 +2,7 @@
 
 #define M_PI 3.1415926535897932384626433832795
 #define MAX_BOUNCES 3
+#define NUM_SAMPLES 8
 
 struct Material {
     vec3 albedo;
@@ -49,10 +50,12 @@ uniform int sphere_count;
 uniform Triangle triangles[32];
 uniform int triangle_count;
 
+int sample_id;
+
 float tan_fov_2;
 
 float rand(vec2 co) {
-    return fract(sin(dot(co, vec2(12.9898, 78.233)) + random_seed) * 43758.5453);
+    return fract(sin(dot(co, vec2(12.9898, 78.233)) + random_seed + sample_id) * 43758.5453);
 }
 
 vec3 rand_unit_sphere(vec3 seed) {
@@ -220,7 +223,13 @@ vec3 per_pixel() {
                 coords.y * tan_fov_2 / aspect_ratio,
                 1.0));
 
-    return incident_light(origin, direction);
+    // Multisampling
+    vec3 result = vec3(0.0);
+    for (sample_id = 0; sample_id < NUM_SAMPLES; sample_id++)
+        result += incident_light(origin, direction);
+    result /= NUM_SAMPLES;
+
+    return result;
 }
 
 void main() {

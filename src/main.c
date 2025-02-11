@@ -194,8 +194,8 @@ int main() {
     scene world;
     scene_init(&world);
 
-    world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};
-    /*world.sky_color = glms_vec3_broadcast(0.0);*/
+    /*world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};*/
+    world.sky_color = glms_vec3_broadcast(0.0);
 
     int sun =
         scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.2, 1.0,
