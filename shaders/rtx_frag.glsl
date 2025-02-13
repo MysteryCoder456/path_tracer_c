@@ -64,12 +64,12 @@ vec3 rand_unit_sphere(vec3 seed) {
 
 float ray_sphere_intersect(vec3 o, vec3 d, Sphere s) {
     // Translate ray so that sphere is at origin
-    vec3 o1 = o - s.center;
+    o -= s.center;
 
     // Quadratic equation
     float a = dot(d, d);
-    float b = 2.0 * (o1.x * d.x + o1.y * d.y + o1.z * d.z);
-    float c = dot(o1, o1) - pow(s.radius, 2.0);
+    float b = 2.0 * (o.x * d.x + o.y * d.y + o.z * d.z);
+    float c = dot(o, o) - pow(s.radius, 2.0);
     float det = b * b - 4.0 * a * c;
 
     // Equation has no real solutions
@@ -169,6 +169,7 @@ vec3 incident_light(vec3 origin, vec3 direction) {
         RayHit hit = trace_ray(origin, direction);
         if (hit.distance < 0) {
             total_light += color * sky_color;
+            break;
         }
         Material mat = materials[hit.material];
 
