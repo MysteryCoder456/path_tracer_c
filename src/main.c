@@ -62,6 +62,12 @@ void uniform_materials(scene *world, int program) {
         strcat(transparency, "transparency");
         glUniform1f(glGetUniformLocation(program, transparency),
                     mat.transparency);
+
+        char refractive_index[64];
+        strcpy(refractive_index, identifier);
+        strcat(refractive_index, "refractive_index");
+        glUniform1f(glGetUniformLocation(program, refractive_index),
+                    mat.refractive_index);
     }
 }
 
@@ -194,24 +200,25 @@ int main() {
     scene world;
     scene_init(&world);
 
-    world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};
-    /*world.sky_color = glms_vec3_broadcast(0.0);*/
+    /*world.sky_color = (vec3s){135.0 / 255.0, 206.0 / 255.0, 235.0 / 255.0};*/
+    world.sky_color = glms_vec3_broadcast(0.0);
 
     int sun =
         scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.2, 1.0,
-                           (vec3s){0.9372, 0.7490, 0.0157}, 1.0, 0.0);
+                           (vec3s){0.9372, 0.7490, 0.0157}, 1.0, 0.0, 1.0);
     int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.3, 0.5,
-                                         (vec3s){1, 0, 0}, 0.0, 0.0);
-    int green_grass = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 0.7,
-                                         0.1, (vec3s){0.0, 1.0, 0.0}, 0.0, 0.0);
+                                         (vec3s){1, 0, 0}, 0.0, 0.0, 1.0);
+    int green_grass =
+        scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 0.7, 0.1,
+                           (vec3s){0.0, 1.0, 0.0}, 0.0, 0.0, 1.0);
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
-                                    glms_vec3_zero(), 0.0, 0.0);
+                                    glms_vec3_zero(), 0.0, 0.0, 1.0);
     int glass = scene_add_material(&world, (vec3s){1.0, 1.0, 1.0}, 0.0, 0.0,
-                                   (vec3s){1.0, 1.0, 1.0}, 0.0, 1.0);
+                                   (vec3s){1.0, 1.0, 1.0}, 0.0, 1.0, 1.52);
 
     scene_add_sphere(&world, (vec3s){25.0, 25.0, 40}, 25, sun);
     scene_add_sphere(&world, (vec3s){-0.5, 0.0, 5.0}, 1, red_plastic);
-    /*scene_add_sphere(&world, (vec3s){0.5, -0.5, 2.5}, 0.5, glass);*/
+    scene_add_sphere(&world, (vec3s){0.5, -0.6, 2.5}, 0.5, glass);
     scene_add_sphere(&world, (vec3s){0.0, -51.0, 5.0}, 50, green_grass);
 
     /*
@@ -247,8 +254,8 @@ int main() {
         double delta_time = time - prevTime;
         /*printf("%f\n", time);*/
 
-        world.objects[1].sphere.center.x = 1.5 * cos(time) - 1.0;
-        world.objects[1].sphere.center.z = 1.5 * sin(time) + 5.0;
+        /*world.objects[1].sphere.center.x = 1.2 * cos(0.4 * time) - 1.0;*/
+        /*world.objects[1].sphere.center.z = 1.2 * sin(0.4 * time) + 5.0;*/
         /*world.objects[1].sphere.radius += 0.1 * delta_time;*/
         uniform_objects(&world, shader);
 

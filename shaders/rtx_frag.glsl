@@ -13,6 +13,7 @@ struct Material {
     float emission_strength;
 
     float transparency;
+    float refractive_index;
 };
 
 struct RayHit {
@@ -62,7 +63,7 @@ int sample_id;
 float tan_fov_2;
 
 float rand(vec2 co) {
-    return fract(sin(dot(co, vec2(12.9898, 78.233)) + random_seed + sample_id) * 43758.5453);
+    return fract(sin(dot(co, vec2(12.9898, 78.233)) + random_seed + 89.4567 * sample_id) * 43758.5453);
 }
 
 vec3 rand_unit_sphere(vec3 seed) {
@@ -204,34 +205,38 @@ vec3 incident_light(vec3 origin, vec3 direction) {
         vec3 normal = normalize(hit.normal + deviation);
 
         // Prepare ray for reflection
-        vec3 reflect_direction = normalize(reflect(direction, normal));
-        vec3 reflect_origin = hit.point + 0.0001 * reflect_direction;
-        StackItem next_reflect;
-        next_reflect.origin = reflect_origin;
-        next_reflect.direction = reflect_direction;
-        next_reflect.bounces = current.bounces + 1;
-        next_reflect.color = current.color;
-        stack[stack_size++] = next_reflect;
+        if (mat.transparency < 1.0) {
+            vec3 reflect_direction = reflect(current.direction, normal);
+            vec3 reflect_origin = hit.point + 0.0001 * reflect_direction;
+            StackItem next_reflect;
+            next_reflect.origin = reflect_origin;
+            next_reflect.direction = reflect_direction;
+            next_reflect.bounces = current.bounces + 1;
+            next_reflect.color = (1 - mat.transparency) * current.color;
+            stack[stack_size++] = next_reflect;
+        }
 
         // Prepare ray for refraction
-        // vec3 transmitted_Li = vec3(0.0);
-        // if (mat.transparency > 0.0) {
-        //     float dot = dot(direction, normal);
-        //
-        //     float refractive_index;
-        //     vec3 refraction_normal;
-        //     if (dot < 0) {
-        //         refractive_index = 1.0 / 1.5;
-        //         refraction_normal = normal;
-        //     } else {
-        //         refractive_index = 1.5;
-        //         refraction_normal = -normal;
-        //     }
-        //
-        //     vec3 transmit_direction = refract(direction, refraction_normal, refractive_index);
-        //     vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
-        //     transmitted_Li = incident_light(transmit_origin, transmit_direction, bounces);
-        // }
+        if (mat.transparency > 0.0) {
+            float dot = dot(current.direction, normal);
+            float refractive_index;
+            vec3 refraction_normal;
+            if (dot < 0) {
+                refractive_index = 1.0 / mat.refractive_index;
+                refraction_normal = normal;
+            } else {
+                refractive_index = mat.refractive_index;
+                refraction_normal = -normal;
+            }
+            vec3 transmit_direction = refract(current.direction, refraction_normal, refractive_index);
+            vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
+            StackItem next_refract;
+            next_refract.origin = transmit_origin;
+            next_refract.direction = transmit_direction;
+            next_refract.bounces = current.bounces + 1;
+            next_refract.color = mat.transparency * current.color;
+            stack[stack_size++] = next_refract;
+        }
     }
 
     return total_light;

@@ -23,6 +23,7 @@ typedef struct {
     float emission_strength;
 
     float transparency;
+    float refractive_index;
 } shape_material;
 
 typedef struct {
