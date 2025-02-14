@@ -2,7 +2,7 @@
 
 #define M_PI 3.1415926535897932384626433832795
 #define MAX_BOUNCES 3
-#define NUM_SAMPLES 8
+#define NUM_SAMPLES 4
 
 struct Material {
     vec3 albedo;
@@ -32,6 +32,13 @@ struct Triangle {
     vec3 v1;
     vec3 v2;
     int material;
+};
+
+struct StackItem {
+    vec3 origin;
+    vec3 direction;
+    int bounces;
+    vec3 color;
 };
 
 in vec2 coords;
@@ -155,65 +162,78 @@ RayHit trace_ray(vec3 origin, vec3 direction) {
 }
 
 vec3 incident_light(vec3 origin, vec3 direction) {
-    vec3 color = vec3(1.0);
+    // Create ray stack
+    StackItem stack[(1 << MAX_BOUNCES) + 1];
+    int stack_size = 0;
+
+    // Add initial origin and direction to stack
+    stack[stack_size].origin = origin;
+    stack[stack_size].direction = direction;
+    stack[stack_size].bounces = 0;
+    stack[stack_size].color = vec3(1.0);
+    stack_size++;
+
     vec3 total_light = vec3(0.0);
 
-    int bounces = 0;
-    while (true) {
-        if (bounces > MAX_BOUNCES) {
-            total_light += color * sky_color;
-            break;
+    while (stack_size > 0) {
+        // Pop ray from stack
+        StackItem current = stack[--stack_size];
+
+        if (current.bounces > MAX_BOUNCES) {
+            total_light += current.color * sky_color;
+            continue;
         }
 
         // Trace ray
-        RayHit hit = trace_ray(origin, direction);
+        RayHit hit = trace_ray(current.origin, current.direction);
         if (hit.distance < 0) {
-            total_light += color * sky_color;
-            break;
+            total_light += current.color * sky_color;
+            continue;
         }
         Material mat = materials[hit.material];
 
         // Surface emission
         vec3 Le = mat.emission_color * mat.emission_strength;
 
+        // Adding contributions
+        total_light += current.color * Le;
+        current.color *= mat.albedo;
+
         // Roughness normal
         vec3 deviation = rand_unit_sphere(origin + direction) * mat.roughness * 0.5;
         vec3 normal = normalize(hit.normal + deviation);
 
-        // Adding contributions
-        total_light += color * Le;
-        color *= mat.albedo;
-
-        // Prepare for next bounce
+        // Prepare ray for reflection
         vec3 reflect_direction = normalize(reflect(direction, normal));
         vec3 reflect_origin = hit.point + 0.0001 * reflect_direction;
-        origin = reflect_origin;
-        direction = reflect_direction;
-        bounces++;
+        StackItem next_reflect;
+        next_reflect.origin = reflect_origin;
+        next_reflect.direction = reflect_direction;
+        next_reflect.bounces = current.bounces + 1;
+        next_reflect.color = current.color;
+        stack[stack_size++] = next_reflect;
+
+        // Prepare ray for refraction
+        // vec3 transmitted_Li = vec3(0.0);
+        // if (mat.transparency > 0.0) {
+        //     float dot = dot(direction, normal);
+        //
+        //     float refractive_index;
+        //     vec3 refraction_normal;
+        //     if (dot < 0) {
+        //         refractive_index = 1.0 / 1.5;
+        //         refraction_normal = normal;
+        //     } else {
+        //         refractive_index = 1.5;
+        //         refraction_normal = -normal;
+        //     }
+        //
+        //     vec3 transmit_direction = refract(direction, refraction_normal, refractive_index);
+        //     vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
+        //     transmitted_Li = incident_light(transmit_origin, transmit_direction, bounces);
+        // }
     }
 
-    // TODO: Transmitted incident light
-
-    // vec3 transmitted_Li = vec3(0.0);
-    // if (mat.transparency > 0.0) {
-    //     float dot = dot(direction, normal);
-    //
-    //     float refractive_index;
-    //     vec3 refraction_normal;
-    //     if (dot < 0) {
-    //         refractive_index = 1.0 / 1.5;
-    //         refraction_normal = normal;
-    //     } else {
-    //         refractive_index = 1.5;
-    //         refraction_normal = -normal;
-    //     }
-    //
-    //     vec3 transmit_direction = refract(direction, refraction_normal, refractive_index);
-    //     vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
-    //     transmitted_Li = incident_light(transmit_origin, transmit_direction, bounces);
-    // }
-
-    // return Le + mat.albedo * Li;
     return total_light;
 }
 

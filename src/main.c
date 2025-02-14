@@ -200,9 +200,9 @@ int main() {
     int sun =
         scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.2, 1.0,
                            (vec3s){0.9372, 0.7490, 0.0157}, 1.0, 0.0);
-    int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.5,
+    int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.3, 0.5,
                                          (vec3s){1, 0, 0}, 0.0, 0.0);
-    int green_grass = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 1.0,
+    int green_grass = scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 0.7,
                                          0.1, (vec3s){0.0, 1.0, 0.0}, 0.0, 0.0);
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
                                     glms_vec3_zero(), 0.0, 0.0);
