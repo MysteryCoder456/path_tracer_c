@@ -1,8 +1,8 @@
 #version 410
 
 #define M_PI 3.1415926535897932384626433832795
-#define MAX_BOUNCES 3
-#define NUM_SAMPLES 4
+#define MAX_BOUNCES 7
+#define NUM_SAMPLES 1024
 
 struct Material {
     vec3 albedo;
@@ -62,12 +62,13 @@ int sample_id;
 
 float tan_fov_2;
 
-float rand(vec2 co) {
-    return fract(sin(dot(co, vec2(12.9898, 78.233)) + random_seed + 89.4567 * sample_id) * 43758.5453);
+float noise(vec2 p) {
+    vec2 k1 = vec2(23.1406927, 2.6651441);
+    return fract(sin(dot(p, k1) + random_seed + sample_id) * 43758.5453);
 }
 
 vec3 rand_unit_sphere(vec3 seed) {
-    return normalize(vec3(rand(seed.xy), rand(seed.yz), rand(seed.zx)));
+    return normalize(vec3(noise(seed.xy), noise(seed.yz), noise(seed.zx)));
 }
 
 float ray_sphere_intersect(vec3 o, vec3 d, Sphere s) {

@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 23)
 add_subdirectory(external/glfw)
 
 # add_executable(${PROJECT_NAME} src/main.c src/renderer.c src/scene.c src/ray.c src/bitmap.c src/threadpool.c src/vector.c)
-add_executable(${PROJECT_NAME} src/main.c src/scene.c src/gpu/shader.c external/glad/src/gl.c)
+add_executable(${PROJECT_NAME} src/main.c src/scene.c src/bitmap.c src/gpu/shader.c external/glad/src/gl.c)
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_include_directories(${PROJECT_NAME} PRIVATE external)
 target_include_directories(${PROJECT_NAME} PRIVATE external/glad/include)

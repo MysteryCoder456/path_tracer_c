@@ -1,3 +1,4 @@
+#include "bitmap.h"
 #include "gpu/shader.h"
 #include "scene.h"
 #include <math.h>
@@ -246,40 +247,85 @@ int main() {
     uniform_materials(&world, shader);
     uniform_objects(&world, shader);
 
-    // Main loop
-    double time = glfwGetTime();
-    while (!glfwWindowShouldClose(window)) {
-        double prevTime = time;
-        time = glfwGetTime();
-        double delta_time = time - prevTime;
-        /*printf("%f\n", time);*/
+    // Create framebuffer to draw scene to
+    GLuint fbo;
+    GLuint texture;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB,
+                 GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           texture, 0);
 
-        /*world.objects[1].sphere.center.x = 1.2 * cos(0.4 * time) - 1.0;*/
-        /*world.objects[1].sphere.center.z = 1.2 * sin(0.4 * time) + 5.0;*/
-        /*world.objects[1].sphere.radius += 0.1 * delta_time;*/
-        uniform_objects(&world, shader);
-
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-
-        glUseProgram(shader);
-        glBindVertexArray(vao);
-
-        // Set general settings
-        glUniform1f(random_seed_loc, (float)(((int)time + random()) % 512));
-        glUniform1f(aspect_ratio_loc, (float)width / (float)(height));
-        glUniform1f(fov_loc, fov);
-        glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
-
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fprintf(stderr, "Framebuffer not complete!\n");
+        return 1;
     }
+
+    // Bind and clear the buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, WIDTH, HEIGHT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Set general settings
+    glUseProgram(shader);
+    glBindVertexArray(vao);
+    glUniform1f(random_seed_loc, (float)((time(NULL) + random()) % (1 << 15)));
+    glUniform1f(aspect_ratio_loc, (float)WIDTH / (float)HEIGHT);
+    glUniform1f(fov_loc, fov);
+    glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
+
+    // Render scene
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // Read and save rendered scene pixel data
+    GLubyte pixels[3 * WIDTH * HEIGHT];
+    glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    write_bitmap("output.bmp", WIDTH, HEIGHT, pixels, false);
+
+    // Release resources
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &texture);
+
+    // Real-time render loop
+    // double time = glfwGetTime();
+    // while (!glfwWindowShouldClose(window)) {
+    //    double prevTime = time;
+    //    time = glfwGetTime();
+    //    double delta_time = time - prevTime;
+    //    /*printf("%f\n", time);*/
+
+    //    /*world.objects[1].sphere.center.x = 1.2 * cos(0.4 * time) - 1.0;*/
+    //    /*world.objects[1].sphere.center.z = 1.2 * sin(0.4 * time) + 5.0;*/
+    //    /*world.objects[1].sphere.radius += 0.1 * delta_time;*/
+    //    uniform_objects(&world, shader);
+
+    //    int width, height;
+    //    glfwGetFramebufferSize(window, &width, &height);
+    //    glViewport(0, 0, width, height);
+
+    //    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //    glClearColor(0.0, 0.0, 0.0, 1.0);
+
+    //    glUseProgram(shader);
+    //    glBindVertexArray(vao);
+
+    //    // Set general settings
+    //    glUniform1f(random_seed_loc, (float)(((int)time + random()) % 1024));
+    //    glUniform1f(aspect_ratio_loc, (float)width / (float)(height));
+    //    glUniform1f(fov_loc, fov);
+    //    glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
+
+    //    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    //    glfwSwapBuffers(window);
+    //    glfwPollEvents();
+    //}
 
     // Cleanup
     glfwDestroyWindow(window);
