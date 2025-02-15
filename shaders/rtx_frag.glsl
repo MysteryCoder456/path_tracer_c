@@ -258,6 +258,8 @@ vec3 incident_light(vec3 origin, vec3 direction, inout uint rng_state) {
                 refraction_normal = -normal;
             }
             vec3 transmit_direction = refract(current.direction, refraction_normal, refractive_index);
+            if (transmit_direction == vec3(0.0))
+                continue;
             vec3 transmit_origin = hit.point + 0.0001 * transmit_direction;
             StackItem next_refract;
             next_refract.origin = transmit_origin;
