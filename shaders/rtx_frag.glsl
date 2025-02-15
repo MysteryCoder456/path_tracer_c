@@ -2,7 +2,7 @@
 
 #define M_PI 3.1415926535897932384626433832795
 #define MAX_BOUNCES 4
-#define NUM_SAMPLES 1024
+#define NUM_SAMPLES 2048
 
 struct Material {
     vec3 albedo;
