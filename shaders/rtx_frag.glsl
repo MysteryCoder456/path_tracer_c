@@ -1,9 +1,8 @@
 #version 410
 
 #define M_PI 3.1415926535897932384626433832795
-#define MAX_BOUNCES 7
-#define NUM_SAMPLES 256
-#define FLOAT_MAX 3.402823466e+38
+#define MAX_BOUNCES 4
+#define NUM_SAMPLES 2048
 
 struct Material {
     vec3 albedo;
@@ -48,6 +47,7 @@ out vec4 FragColor;
 
 uniform uint random_seed;
 
+uniform vec2 window_size;
 uniform float aspect_ratio;
 uniform float fov;
 uniform vec3 sky_color;
@@ -59,35 +59,33 @@ uniform int sphere_count;
 uniform Triangle triangles[32];
 uniform int triangle_count;
 
-uint seed;
-
 float tan_fov_2;
 
 // PCG (permuted congruential generator). Thanks to:
 // www.pcg-random.org and www.shadertoy.com/view/XlGcRh
-uint next_random() {
-    seed = seed * 747796405u + 2891336453u;
-    uint result = ((seed >> ((seed >> 28) + 4)) ^ seed) * 277803737u;
+uint next_random(inout uint state) {
+    state = state * 747796405u + 2891336453u + random_seed;
+    uint result = ((state >> ((state >> 28) + 4)) ^ state) * 277803737u;
     result = (result >> 22) ^ result;
     return result;
 }
 
-float random_value() {
-    return next_random() / 4294967295.0; // 2^32 - 1
+float random_value(inout uint state) {
+    return next_random(state) / 4294967295.0; // 2^32 - 1
 }
 
 // Random value in normal distribution (with mean=0 and sd=1)
-float random_value_normal_dist() {
+float random_value_normal_dist(inout uint state) {
     // Thanks to https://stackoverflow.com/a/6178290
-    float theta = 2 * 3.1415926 * random_value();
-    float rho = sqrt(-2 * log(random_value()));
+    float theta = 2 * M_PI * random_value(state);
+    float rho = sqrt(-2 * log(random_value(state)));
     return rho * cos(theta);
 }
 
-vec3 rand_unit_sphere() {
-    float x = random_value_normal_dist();
-    float y = random_value_normal_dist();
-    float z = random_value_normal_dist();
+vec3 rand_unit_sphere(inout uint state) {
+    float x = random_value_normal_dist(state);
+    float y = random_value_normal_dist(state);
+    float z = random_value_normal_dist(state);
     return normalize(vec3(x, y, z));
 }
 
@@ -193,7 +191,7 @@ RayHit trace_ray(vec3 origin, vec3 direction) {
     return closest_hit;
 }
 
-vec3 incident_light(vec3 origin, vec3 direction) {
+vec3 incident_light(vec3 origin, vec3 direction, inout uint rng_state) {
     // Create ray stack
     StackItem stack[(1 << MAX_BOUNCES) + 1];
     int stack_size = 0;
@@ -232,7 +230,7 @@ vec3 incident_light(vec3 origin, vec3 direction) {
         current.color *= mat.albedo;
 
         // Roughness normal
-        vec3 deviation = rand_unit_sphere() * mat.roughness;
+        vec3 deviation = rand_unit_sphere(rng_state) * mat.roughness;
         vec3 normal = normalize(hit.normal + deviation);
 
         // Prepare ray for reflection
@@ -274,6 +272,9 @@ vec3 incident_light(vec3 origin, vec3 direction) {
 }
 
 vec3 per_pixel() {
+    uint pixel_idx = uint((coords.y * window_size.y) * window_size.x + (coords.x * window_size.x));
+    uint rng_state = pixel_idx;
+
     vec3 origin = vec3(0.0);
     vec3 direction = normalize(vec3(
                 coords.x * tan_fov_2,
@@ -282,15 +283,16 @@ vec3 per_pixel() {
 
     // Multisampling
     vec3 result = vec3(0.0);
-    for (int sample_id = 0; sample_id < NUM_SAMPLES; sample_id++)
-        result += incident_light(origin, direction);
+    for (int sample_id = 0; sample_id < NUM_SAMPLES; sample_id++) {
+        rng_state += sample_id;
+        result += incident_light(origin, direction, rng_state);
+    }
     result /= NUM_SAMPLES;
 
     return result;
 }
 
 void main() {
-    seed = random_seed;
     tan_fov_2 = tan(fov / 2.0);
     FragColor = vec4(per_pixel(), 1.0);
 }

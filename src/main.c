@@ -172,6 +172,7 @@ int main() {
     if (shader == -1)
         return 1;
     int random_seed_loc = glGetUniformLocation(shader, "random_seed");
+    int window_size_loc = glGetUniformLocation(shader, "window_size");
     int aspect_ratio_loc = glGetUniformLocation(shader, "aspect_ratio");
     int fov_loc = glGetUniformLocation(shader, "fov");
     int sky_color_loc = glGetUniformLocation(shader, "sky_color");
@@ -210,7 +211,7 @@ int main() {
     int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.5,
                                          (vec3s){1, 0, 0}, 0.0, 0.0, 1.0);
     int green_grass =
-        scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 1.0, 0.1,
+        scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 0.8, 0.1,
                            (vec3s){0.0, 1.0, 0.0}, 0.0, 0.0, 1.0);
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
                                     glms_vec3_zero(), 0.0, 0.0, 1.0);
@@ -272,7 +273,8 @@ int main() {
     // Set general settings
     glUseProgram(shader);
     glBindVertexArray(vao);
-    glUniform1f(random_seed_loc, (unsigned int)random());
+    glUniform1f(random_seed_loc, (unsigned int)time(NULL));
+    glUniform2f(window_size_loc, WIDTH, HEIGHT);
     glUniform1f(aspect_ratio_loc, (float)WIDTH / (float)HEIGHT);
     glUniform1f(fov_loc, fov);
     glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
