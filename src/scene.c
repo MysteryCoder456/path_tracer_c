@@ -29,7 +29,8 @@ void scene_init(scene *s) {
 size_t scene_add_material(scene *s, const vec3s albedo, const float roughness,
                           const float metallicity, const vec3s emission_color,
                           const float emission_strength,
-                          const float transparency) {
+                          const float transparency,
+                          const float refractive_index) {
     if (s->num_materials == s->max_materials)
         scene_extend_materials(s);
 
@@ -40,6 +41,7 @@ size_t scene_add_material(scene *s, const vec3s albedo, const float roughness,
         .emission_color = emission_color,
         .emission_strength = emission_strength,
         .transparency = transparency,
+        .refractive_index = refractive_index,
     };
     return s->num_materials - 1;
 }
