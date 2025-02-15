@@ -101,7 +101,7 @@ float ray_sphere_intersect(vec3 o, vec3 d, Sphere s) {
 
     // Equation has no real solutions
     if (det < 0)
-        return -1;
+        return -1.0;
     float sqrt_det = sqrt(det);
     float two_a = 2.0 * a;
 
