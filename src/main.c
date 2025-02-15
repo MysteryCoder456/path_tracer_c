@@ -246,6 +246,46 @@ int main() {
     uniform_materials(&world, shader);
     uniform_objects(&world, shader);
 
+#ifdef RT
+
+    // Real-time render loop
+    double time = glfwGetTime();
+    while (!glfwWindowShouldClose(window)) {
+        double prevTime = time;
+        time = glfwGetTime();
+        double delta_time = time - prevTime;
+        /*printf("%f\n", time);*/
+
+        /*world.objects[1].sphere.center.x = 1.2 * cos(0.4 * time) - 1.0;*/
+        /*world.objects[1].sphere.center.z = 1.2 * sin(0.4 * time) + 5.0;*/
+        /*world.objects[1].sphere.radius += 0.1 * delta_time;*/
+        uniform_objects(&world, shader);
+
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+
+        glUseProgram(shader);
+        glBindVertexArray(vao);
+
+        // Set general settings
+        glUniform1ui(random_seed_loc, (unsigned int)random());
+        glUniform2f(window_size_loc, WIDTH, HEIGHT);
+        glUniform1f(aspect_ratio_loc, (float)width / (float)(height));
+        glUniform1f(fov_loc, fov);
+        glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+#else
+
     // Create framebuffer to draw scene to
     GLuint fbo;
     GLuint texture;
@@ -273,7 +313,7 @@ int main() {
     // Set general settings
     glUseProgram(shader);
     glBindVertexArray(vao);
-    glUniform1f(random_seed_loc, (unsigned int)time(NULL));
+    glUniform1ui(random_seed_loc, (unsigned int)random());
     glUniform2f(window_size_loc, WIDTH, HEIGHT);
     glUniform1f(aspect_ratio_loc, (float)WIDTH / (float)HEIGHT);
     glUniform1f(fov_loc, fov);
@@ -292,40 +332,7 @@ int main() {
     glDeleteFramebuffers(1, &fbo);
     glDeleteTextures(1, &texture);
 
-    // Real-time render loop
-    // double time = glfwGetTime();
-    // while (!glfwWindowShouldClose(window)) {
-    //    double prevTime = time;
-    //    time = glfwGetTime();
-    //    double delta_time = time - prevTime;
-    //    /*printf("%f\n", time);*/
-
-    //    /*world.objects[1].sphere.center.x = 1.2 * cos(0.4 * time) - 1.0;*/
-    //    /*world.objects[1].sphere.center.z = 1.2 * sin(0.4 * time) + 5.0;*/
-    //    /*world.objects[1].sphere.radius += 0.1 * delta_time;*/
-    //    uniform_objects(&world, shader);
-
-    //    int width, height;
-    //    glfwGetFramebufferSize(window, &width, &height);
-    //    glViewport(0, 0, width, height);
-
-    //    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    //    glClearColor(0.0, 0.0, 0.0, 1.0);
-
-    //    glUseProgram(shader);
-    //    glBindVertexArray(vao);
-
-    //    // Set general settings
-    //    glUniform1f(random_seed_loc, (float)(((int)time + random()) % 1024));
-    //    glUniform1f(aspect_ratio_loc, (float)width / (float)(height));
-    //    glUniform1f(fov_loc, fov);
-    //    glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
-
-    //    glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    //    glfwSwapBuffers(window);
-    //    glfwPollEvents();
-    //}
+#endif
 
     // Cleanup
     glfwDestroyWindow(window);
