@@ -2,7 +2,7 @@
 
 #define M_PI 3.1415926535897932384626433832795
 #define MAX_BOUNCES 4
-#define NUM_SAMPLES 2048
+#define NUM_SAMPLES 1024
 
 struct Material {
     vec3 albedo;
@@ -273,7 +273,7 @@ vec3 incident_light(vec3 origin, vec3 direction, inout uint rng_state) {
 
 vec3 per_pixel() {
     uint pixel_idx = uint((coords.y * window_size.y) * window_size.x + (coords.x * window_size.x));
-    uint rng_state = pixel_idx;
+    uint rng_state = pixel_idx + random_seed;
 
     vec3 origin = vec3(0.0);
     vec3 direction = normalize(vec3(
