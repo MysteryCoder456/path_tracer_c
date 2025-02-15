@@ -2,7 +2,8 @@
 
 #define M_PI 3.1415926535897932384626433832795
 #define MAX_BOUNCES 7
-#define NUM_SAMPLES 1024
+#define NUM_SAMPLES 256
+#define FLOAT_MAX 3.402823466e+38
 
 struct Material {
     vec3 albedo;
@@ -45,7 +46,7 @@ struct StackItem {
 in vec2 coords;
 out vec4 FragColor;
 
-uniform float random_seed;
+uniform uint random_seed;
 
 uniform float aspect_ratio;
 uniform float fov;
@@ -58,17 +59,36 @@ uniform int sphere_count;
 uniform Triangle triangles[32];
 uniform int triangle_count;
 
-int sample_id;
+uint seed;
 
 float tan_fov_2;
 
-float noise(vec2 p) {
-    vec2 k1 = vec2(23.1406927, 2.6651441);
-    return fract(sin(dot(p, k1) + random_seed + sample_id) * 43758.5453);
+// PCG (permuted congruential generator). Thanks to:
+// www.pcg-random.org and www.shadertoy.com/view/XlGcRh
+uint next_random() {
+    seed = seed * 747796405u + 2891336453u;
+    uint result = ((seed >> ((seed >> 28) + 4)) ^ seed) * 277803737u;
+    result = (result >> 22) ^ result;
+    return result;
 }
 
-vec3 rand_unit_sphere(vec3 seed) {
-    return normalize(vec3(noise(seed.xy), noise(seed.yz), noise(seed.zx)));
+float random_value() {
+    return next_random() / 4294967295.0; // 2^32 - 1
+}
+
+// Random value in normal distribution (with mean=0 and sd=1)
+float random_value_normal_dist() {
+    // Thanks to https://stackoverflow.com/a/6178290
+    float theta = 2 * 3.1415926 * random_value();
+    float rho = sqrt(-2 * log(random_value()));
+    return rho * cos(theta);
+}
+
+vec3 rand_unit_sphere() {
+    float x = random_value_normal_dist();
+    float y = random_value_normal_dist();
+    float z = random_value_normal_dist();
+    return normalize(vec3(x, y, z));
 }
 
 float ray_sphere_intersect(vec3 o, vec3 d, Sphere s) {
@@ -77,23 +97,25 @@ float ray_sphere_intersect(vec3 o, vec3 d, Sphere s) {
 
     // Quadratic equation
     float a = dot(d, d);
-    float b = 2.0 * (o.x * d.x + o.y * d.y + o.z * d.z);
+    float b = 2.0 * dot(o, d);
     float c = dot(o, o) - pow(s.radius, 2.0);
     float det = b * b - 4.0 * a * c;
 
     // Equation has no real solutions
     if (det < 0)
         return -1;
+    float sqrt_det = sqrt(det);
+    float two_a = 2.0 * a;
 
-    float t1 = (-b - sqrt(det)) / 2.0 * a;
+    float t1 = (-b - sqrt_det) / two_a;
     if (t1 >= 0)
         return t1;
 
-    float t2 = (-b + sqrt(det)) / 2.0 * a;
+    float t2 = (-b + sqrt_det) / two_a;
     if (t2 >= 0)
         return t2;
 
-    return -1;
+    return -1.0;
 }
 
 // Moller-Trumbore algorithm
@@ -106,24 +128,32 @@ float ray_triangle_intersect(vec3 o, vec3 d, Triangle tr) {
     vec3 ray_cross_e2 = cross(d, edge2);
     float det = dot(edge1, ray_cross_e2);
 
-    if (det > -epsilon && det < epsilon)
-        return -1;
+    // Check if the ray is parallel to the triangle
+    if (abs(det) < epsilon)
+        return -1.0;
 
     float inv_det = 1.0 / det;
     vec3 s = o - tr.v0;
     float u = inv_det * dot(s, ray_cross_e2);
 
-    if ((u < 0 && abs(u) > epsilon) || (u > 1 && abs(u - 1) > epsilon))
-        return -1;
+    // Check if intersection is outside the triangle
+    if (u < epsilon || u > 1.0)
+        return -1.0;
 
     vec3 s_cross_e1 = cross(s, edge1);
     float v = inv_det * dot(d, s_cross_e1);
 
-    if ((v < 0 && abs(v) > epsilon) || (u + v > 1 && abs(u + v - 1) > epsilon))
-        return -1;
+    // Check if intersection is outside the triangle
+    if (v < epsilon || (u + v) > 1.0)
+        return -1.0;
 
-    // At this stage we can compute t to find out where the intersection point is on the line.
+    // Compute t to determine intersection distance
     float t = inv_det * dot(edge2, s_cross_e1);
+
+    // Check if intersection is behind the ray origin
+    if (t < epsilon)
+        return -1.0;
+
     return t;
 }
 
@@ -157,7 +187,7 @@ RayHit trace_ray(vec3 origin, vec3 direction) {
         vec3 normal = normalize(cross(triangles[i].v0 - triangles[i].v1, triangles[i].v0 - triangles[i].v2));
         closest_hit.normal = (2.0 * int(dot(direction, normal) < 0) - 1.0) * normal;
 
-        closest_hit.material = spheres[i].material;
+        closest_hit.material = triangles[i].material;
     }
 
     return closest_hit;
@@ -202,7 +232,7 @@ vec3 incident_light(vec3 origin, vec3 direction) {
         current.color *= mat.albedo;
 
         // Roughness normal
-        vec3 deviation = rand_unit_sphere(origin + direction) * mat.roughness * 0.5;
+        vec3 deviation = rand_unit_sphere() * mat.roughness;
         vec3 normal = normalize(hit.normal + deviation);
 
         // Prepare ray for reflection
@@ -252,7 +282,7 @@ vec3 per_pixel() {
 
     // Multisampling
     vec3 result = vec3(0.0);
-    for (sample_id = 0; sample_id < NUM_SAMPLES; sample_id++)
+    for (int sample_id = 0; sample_id < NUM_SAMPLES; sample_id++)
         result += incident_light(origin, direction);
     result /= NUM_SAMPLES;
 
@@ -260,6 +290,7 @@ vec3 per_pixel() {
 }
 
 void main() {
+    seed = random_seed;
     tan_fov_2 = tan(fov / 2.0);
     FragColor = vec4(per_pixel(), 1.0);
 }

@@ -205,12 +205,12 @@ int main() {
     world.sky_color = glms_vec3_broadcast(0.0);
 
     int sun =
-        scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.2, 1.0,
+        scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.3, 1.0,
                            (vec3s){0.9372, 0.7490, 0.0157}, 1.0, 0.0, 1.0);
-    int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.3, 0.5,
+    int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.5, 0.5,
                                          (vec3s){1, 0, 0}, 0.0, 0.0, 1.0);
     int green_grass =
-        scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 0.7, 0.1,
+        scene_add_material(&world, (vec3s){0.0, 1.0, 0.0}, 1.0, 0.1,
                            (vec3s){0.0, 1.0, 0.0}, 0.0, 0.0, 1.0);
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
                                     glms_vec3_zero(), 0.0, 0.0, 1.0);
@@ -219,15 +219,13 @@ int main() {
 
     scene_add_sphere(&world, (vec3s){25.0, 25.0, 40}, 25, sun);
     scene_add_sphere(&world, (vec3s){-0.5, 0.0, 5.0}, 1, red_plastic);
-    scene_add_sphere(&world, (vec3s){0.5, -0.6, 2.5}, 0.5, glass);
-    scene_add_sphere(&world, (vec3s){0.0, -51.0, 5.0}, 50, green_grass);
+    scene_add_sphere(&world, (vec3s){0.5, -0.5, 2.5}, 0.5, glass);
+    /*scene_add_sphere(&world, (vec3s){0.0, -101.0, 5.0}, 100, green_grass);*/
 
-    /*
     scene_add_triangle(&world, (vec3s){-50, -1, -50}, (vec3s){50, -1, -50},
                        (vec3s){50, -1, 50}, green_grass);
     scene_add_triangle(&world, (vec3s){-50, -1, -50}, (vec3s){-50, -1, 50},
                        (vec3s){50, -1, 50}, green_grass);
-                       */
 
     /*
     scene_add_triangle(&world, (vec3s){-2.5, 2.5, 10}, (vec3s){-2.5, -2.5, 10},
@@ -274,7 +272,7 @@ int main() {
     // Set general settings
     glUseProgram(shader);
     glBindVertexArray(vao);
-    glUniform1f(random_seed_loc, (float)((time(NULL) + random()) % (1 << 15)));
+    glUniform1f(random_seed_loc, (unsigned int)random());
     glUniform1f(aspect_ratio_loc, (float)WIDTH / (float)HEIGHT);
     glUniform1f(fov_loc, fov);
     glUniform3fv(sky_color_loc, 1, world.sky_color.raw);
