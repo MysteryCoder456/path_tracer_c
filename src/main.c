@@ -207,7 +207,7 @@ int main() {
 
     int sun =
         scene_add_material(&world, (vec3s){0.9372, 0.7490, 0.0157}, 0.3, 1.0,
-                           (vec3s){0.9372, 0.7490, 0.0157}, 20.0, 0.0, 1.0);
+                           (vec3s){0.9372, 0.7490, 0.0157}, 10.0, 0.0, 1.0);
     int red_plastic = scene_add_material(&world, (vec3s){1, 0, 0}, 0.85, 0.5,
                                          (vec3s){1, 0, 0}, 0.0, 0.0, 1.0);
     int green_grass = scene_add_material(
@@ -216,13 +216,13 @@ int main() {
     int mirror = scene_add_material(&world, (vec3s){1, 1, 1}, 0.0, 1.0,
                                     glms_vec3_zero(), 0.0, 0.0, 1.0);
     int glass = scene_add_material(&world, (vec3s){1.0, 1.0, 1.0}, 0.0, 0.0,
-                                   (vec3s){1.0, 1.0, 1.0}, 0.0, 0.95, 1.52);
+                                   (vec3s){1.0, 1.0, 1.0}, 0.0, 1.0, 1.52);
 
-    scene_add_sphere(&world, (vec3s){80.0, 50.0, 100.0}, 25, sun);
+    scene_add_sphere(&world, (vec3s){80.0, 50.0, 100.0}, 40, sun);
     scene_add_sphere(&world, (vec3s){-2.0, 0.0, 4.0}, 1, red_plastic);
-    scene_add_sphere(&world, (vec3s){1.5, -0.4, 3.0}, 0.6, glass);
+    scene_add_sphere(&world, (vec3s){2.5, -0.2, 5.0}, 1.0, glass);
     /*scene_add_sphere(&world, (vec3s){0.0, -101.0, 5.0}, 100, green_grass);*/
-    scene_add_sphere(&world, (vec3s){0.0, 0.5, 8.5}, 1.5, mirror);
+    scene_add_sphere(&world, (vec3s){0.0, 1.5, 10.0}, 2.5, mirror);
 
     scene_add_triangle(&world, (vec3s){-50, -1, -50}, (vec3s){50, -1, -50},
                        (vec3s){50, -1, 50}, green_grass);
